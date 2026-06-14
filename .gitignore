@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 # .gitignore — make sure this line exists:
 .env.local
+.vercel
+.env*

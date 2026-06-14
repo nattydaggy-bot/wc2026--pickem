@@ -1,12 +1,13 @@
 // src/data/fixtures.js
 // FIFA World Cup 2026 — All 104 Fixtures
-// Times are in ET (Eastern Time). ⚠️ Some knockout venues/times are approximate.
-// Update knockout home/away as teams are determined after group stage.
+// Times are in ET (Eastern Time).
+// Knockout home/away show as "TBD (...)" until group stage completes —
+// update these manually as teams qualify.
 
 export const FIXTURES = [
 
   // ════════════════════════════════════════════════════════════════════
-  //  GROUP STAGE  (June 11 – June 27)
+  //  GROUP STAGE  (June 11 – June 27) — 72 matches
   // ════════════════════════════════════════════════════════════════════
 
   // ── GROUP A: Mexico · South Korea · Czechia · South Africa ──────────
@@ -107,7 +108,7 @@ export const FIXTURES = [
 
   // ════════════════════════════════════════════════════════════════════
   //  ROUND OF 32  (June 28 – July 2) — 16 matches
-  //  ⚠️ Teams are TBD — update as group stage results come in
+  //  ⚠️ Teams are TBD — update home/away as group stage results come in
   // ════════════════════════════════════════════════════════════════════
 
   { id:"m073", round:"r32", date:"2026-06-28", time:"12:00", home:"TBD (W-A)",  away:"TBD (3rd best)", venue:"MetLife Stadium, East Rutherford" },
@@ -170,18 +171,31 @@ export const FIXTURES = [
 
 ];
 
-// ── Round metadata ───────────────────────────────────────────────────────────
+// ── Round metadata (points + display labels + colors) ─────────────────
+// Sums to 435 total possible points (216+80+56+36+20+12+15)
 export const ROUND_META = {
-  group: { label: "Group Stage",    points: 3  },
-  r32:   { label: "Round of 32",    points: 5  },
-  r16:   { label: "Round of 16",    points: 7  },
-  qf:    { label: "Quarter-Finals", points: 10 },
-  sf:    { label: "Semi-Finals",    points: 12 },
-  "3rd": { label: "Third Place",    points: 12 },
-  final: { label: "Final",          points: 15 },
+  group: { label: "Group Stage",    short: "GS",  points: 3,  color: "#4CAF50" },
+  r32:   { label: "Round of 32",    short: "R32", points: 5,  color: "#4FC3F7" },
+  r16:   { label: "Round of 16",    short: "R16", points: 7,  color: "#FFD54F" },
+  qf:    { label: "Quarter-Finals", short: "QF",  points: 9,  color: "#FF9800" },
+  sf:    { label: "Semi-Finals",    short: "SF",  points: 10, color: "#F06292" },
+  "3rd": { label: "3rd Place",      short: "3P",  points: 12, color: "#FF7043" },
+  final: { label: "Final",          short: "F",   points: 15, color: "#C9A84C" },
 };
 
-// ── Group members lookup ─────────────────────────────────────────────────────
+export const ROUND_ORDER = ["group","r32","r16","qf","sf","3rd","final"];
+
+// Convenience map of round -> color (used by filter pills / badges)
+export const ROUND_COLORS = Object.fromEntries(
+  Object.entries(ROUND_META).map(([key, meta]) => [key, meta.color])
+);
+
+// Total points if every single pick were correct (216+80+56+36+20+12+15)
+export const MAX_POSSIBLE = FIXTURES.reduce(
+  (sum, f) => sum + (ROUND_META[f.round]?.points || 0), 0
+);
+
+// ── Group members lookup ─────────────────────────────────────────────
 export const GROUPS = {
   A: ["Mexico",      "South Korea", "Czechia",    "South Africa"],
   B: ["Switzerland", "Canada",      "Qatar",      "Bosnia & Herzegovina"],

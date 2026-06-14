@@ -1,13 +1,8 @@
 // src/firebase.js
 import { initializeApp } from "firebase/app";
 import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  collection,
-  onSnapshot,
-  serverTimestamp,
+  getFirestore, doc, setDoc, getDoc,
+  collection, onSnapshot, serverTimestamp,
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -17,47 +12,53 @@ const firebaseConfig = {
   storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId:             import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId:     import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
-// ─── League helpers ────────────────────────────────────────────────
-
-export async function createLeague(leagueCode, adminUsername) {
+// ─── League ─────────────────────────────────────────────────────────
+export async function createLeague(leagueCode, username, teamName) {
   const ref = doc(db, "leagues", leagueCode);
-  const existing = await getDoc(ref);
-  if (existing.exists()) return { error: "League code already taken. Choose another." };
-  await setDoc(ref, {
-    createdBy: adminUsername,
-    createdAt: serverTimestamp(),
+  if ((await getDoc(ref)).exists()) return { error: "League code already taken. Try another." };
+  await setDoc(ref, { createdBy: username, createdAt: serverTimestamp() });
+  await setDoc(doc(db, "leagues", leagueCode, "members", username), {
+    teamName: teamName || username, picks: {}, updatedAt: serverTimestamp(),
   });
   return { success: true };
 }
 
 export async function leagueExists(leagueCode) {
-  const snap = await getDoc(doc(db, "leagues", leagueCode));
-  return snap.exists();
+  return (await getDoc(doc(db, "leagues", leagueCode))).exists();
 }
 
-// ─── Picks helpers ─────────────────────────────────────────────────
-
-export async function savePicks(leagueCode, username, picks) {
-  const ref = doc(db, "leagues", leagueCode, "members", username);
-  await setDoc(ref, { picks, updatedAt: serverTimestamp() }, { merge: true });
-}
-
-export async function getPicks(leagueCode, username) {
+// ─── Members ─────────────────────────────────────────────────────────
+export async function getMember(leagueCode, username) {
   const snap = await getDoc(doc(db, "leagues", leagueCode, "members", username));
-  return snap.exists() ? snap.data().picks : {};
+  return snap.exists() ? snap.data() : null;
 }
 
+export async function joinLeague(leagueCode, username, teamName) {
+  const existing = await getMember(leagueCode, username);
+  if (existing) return { error: "Username already taken in this league. Choose another." };
+  await setDoc(doc(db, "leagues", leagueCode, "members", username), {
+    teamName: teamName || username, picks: {}, updatedAt: serverTimestamp(),
+  });
+  return { success: true };
+}
+
+// ─── Picks ───────────────────────────────────────────────────────────
+export async function savePicks(leagueCode, username, picks, teamName) {
+  const data = { picks, updatedAt: serverTimestamp() };
+  if (teamName) data.teamName = teamName;
+  await setDoc(doc(db, "leagues", leagueCode, "members", username), data, { merge: true });
+}
+
+// ─── Real-time subscription ──────────────────────────────────────────
 export function subscribeToLeague(leagueCode, callback) {
-  const ref = collection(db, "leagues", leagueCode, "members");
-  return onSnapshot(ref, (snapshot) => {
+  return onSnapshot(collection(db, "leagues", leagueCode, "members"), snap => {
     const members = {};
-    snapshot.forEach((d) => { members[d.id] = d.data(); });
+    snap.forEach(d => { members[d.id] = d.data(); });
     callback(members);
   });
 }
