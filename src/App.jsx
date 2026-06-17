@@ -4,10 +4,10 @@ import {
   createLeague, joinLeague, leagueExists, getMember,
   savePicks, subscribeToLeague,
 } from "./firebase";
-import { FIXTURES, ROUND_META, MAX_POSSIBLE } from "./data/fixtures";
+import { FIXTURES, ROUND_META, MAX_SCORE } from "./data/fixtures";
 import { buildResults, calcMemberScore, tournamentStatus } from "./utils/scoring";
 
-import LeagueEntry  from "./components/LeagueEntry";
+import LeagueEntry, { LAST_CODE_KEY } from "./components/LeagueEntry";
 import FixturesTab  from "./components/FixturesTab";
 import PicksTab     from "./components/PicksTab";
 import StandingsTab from "./components/StandingsTab";
@@ -59,6 +59,7 @@ export default function App() {
 
   function persist(code, user) {
     localStorage.setItem(SESSION_KEY, JSON.stringify({ leagueCode: code, username: user }));
+    localStorage.setItem(LAST_CODE_KEY, code); // remembered even after logout
   }
 
   // ── Create / Join / Login handlers (passed to LeagueEntry) ─────────
@@ -176,7 +177,7 @@ export default function App() {
       <div style={{
         minHeight:"100vh", background:"#0a1628", color:"#C9A84C",
         display:"flex", alignItems:"center", justifyContent:"center",
-        fontFamily:"'Segoe UI', system-ui, Arial, sans-serif", fontSize:"1.1rem"
+        fontFamily:"'Times New Roman', Times, serif", fontSize:"1.1rem"
       }}>
         ⚽ Loading…
       </div>
@@ -208,7 +209,7 @@ export default function App() {
       minHeight: "100vh",
       background: "#0a1628",
       color: "white",
-      fontFamily: "'Segoe UI', system-ui, Arial, sans-serif",
+      fontFamily: "'Times New Roman', Times, serif",
       display: "flex",
       flexDirection: "column",
       maxWidth: 520,
@@ -247,7 +248,7 @@ export default function App() {
 
         <div style={{ textAlign:"right" }}>
           <div style={{ fontSize:"0.95rem", fontWeight:"bold" }}>
-            {myScore.score}<span style={{ color:"#666", fontSize:"0.75rem" }}>/{MAX_POSSIBLE}</span>
+            {myScore.score}<span style={{ color:"#666", fontSize:"0.75rem" }}>/{MAX_SCORE}</span>
           </div>
           <div style={{ fontSize:"0.62rem", color:"#777", marginTop:1, textTransform:"capitalize" }}>
             {status.label}

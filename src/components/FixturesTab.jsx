@@ -32,11 +32,22 @@ function Pill({ label, active, color, onClick }) {
 function MatchCard({ match, pick, result, onPick }) {
   const isLive   = result?.state === "in";
   const isFT     = result?.completed;
-  const locked   = result && result.state !== "pre"; // started or finished
+  // Times in fixtures.js are ET (UTC-4 during the tournament window).
+  // Lock picks at kickoff even if ESPN's live data hasn't matched up yet.
+  const kickoffMs = (match.date && match.time)
+    ? new Date(`${match.date}T${match.time}:00-04:00`).getTime()
+    : null;
+  const started = kickoffMs != null && Date.now() >= kickoffMs;
+  const locked  = (result && result.state !== "pre") || started; // started or finished
   const rMeta    = ROUND_META[match.round] || {};
   const roundTag = match.group ? "Grp " + match.group : rMeta.short;
 
-  const opts = [
+  // No draw from Round of 32 onwards — knockout rules apply
+  const isKnockout = match.round !== "group";
+  const opts = isKnockout ? [
+    { v:"home", label: match.home ? match.home + " Win" : "Home Win" },
+    { v:"away", label: match.away ? match.away + " Win" : "Away Win" },
+  ] : [
     { v:"home", label: match.home ? match.home + " Win" : "Home Win" },
     { v:"draw", label: "Draw" },
     { v:"away", label: match.away ? match.away + " Win" : "Away Win" },
@@ -45,10 +56,21 @@ function MatchCard({ match, pick, result, onPick }) {
   return (
     <div style={{
       background:"rgba(255,255,255,0.035)",
-      border:"1px solid " + (pick ? "rgba(201,168,76,0.22)" : "rgba(255,255,255,0.06)"),
-      borderLeft: "3px solid " + (pick ? "#C9A84C" : "transparent"),
-      borderRadius:10, padding:"0.8rem 0.7rem", marginBottom:"0.45rem",
+      border:"1px solid " + (isLive ? "#E61D25" : pick ? "rgba(201,168,76,0.22)" : "rgba(255,255,255,0.06)"),
+      borderLeft: "3px solid " + (isLive ? "#E61D25" : pick ? "#C9A84C" : "transparent"),
+      borderRadius:10, padding:"0.8rem 0.7rem", marginBottom:"0.45rem", overflow:"hidden",
     }}>
+      {/* LIVE banner — full width, always at the top of the card */}
+      {isLive && (
+        <div style={{
+          background:"#E61D25", color:"#fff", textAlign:"center",
+          fontSize:"0.7rem", fontWeight:"bold", letterSpacing:"1.5px",
+          padding:"4px 0", margin:"-0.8rem -0.7rem 0.55rem",
+        }}>
+          🔴 LIVE{result.status ? " · " + result.status : ""} — {result.homeScore}–{result.awayScore}
+        </div>
+      )}
+
       {/* Top meta row */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"0.55rem" }}>
         <span style={{
@@ -58,11 +80,11 @@ function MatchCard({ match, pick, result, onPick }) {
         }}>
           {roundTag}
         </span>
-        <span style={{ fontSize:"0.68rem", color: isLive ? "#4CAF50" : isFT ? "#aaa" : "#555" }}>
-          {isLive
-            ? "🔴 " + result.homeScore + "–" + result.awayScore + " LIVE"
-            : isFT
-              ? "FT " + result.homeScore + "–" + result.awayScore
+        <span style={{ fontSize:"0.68rem", color: isFT ? "#aaa" : "#555" }}>
+          {isFT
+            ? "FT " + result.homeScore + "–" + result.awayScore
+            : isLive
+              ? ""
               : (locked ? "🔒 " : "") + (match.time || "") + " ET"}
         </span>
       </div>
