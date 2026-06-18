@@ -40,13 +40,12 @@ function Shell({ children }) {
 
         {/* Hero header */}
         <div style={{ textAlign:"center", marginBottom:"1.5rem" }}>
-          <div style={{
-            width:64, height:64, borderRadius:"50%",
-            background:"radial-gradient(circle,#1d2c44,#0a1628)",
-            border:`2px solid ${GOLD}`,
-            display:"flex", alignItems:"center", justifyContent:"center",
-            fontSize:"1.8rem", margin:"0 auto 0.6rem"
-          }}>{"\uD83C\uDFC6"}</div>
+                      <img
+              src="/logo.svg"
+              alt="WC2026 Pick'em"
+              style={{ width:72, height:72, objectFit:"contain",
+                margin:"0 auto 0.6rem", display:"block" }}
+            />
           <div style={{
             fontSize:"0.68rem", letterSpacing:"2px", color:GOLD,
             fontWeight:"bold", marginBottom:4

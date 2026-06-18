@@ -230,12 +230,11 @@ export default function App() {
         zIndex: 10,
       }}>
         <div style={{ display:"flex", alignItems:"center", gap:"0.6rem" }}>
-          <div style={{
-            width:34, height:34, borderRadius:"50%",
-            background:"radial-gradient(circle at 35% 30%, #FFE08A, #C9A84C 60%, #8a6d22 100%)",
-            display:"flex", alignItems:"center", justifyContent:"center",
-            fontSize:"1.1rem", flexShrink:0
-          }}>🏆</div>
+          <img
+            src="/logo.svg"
+            alt="logo"
+            style={{ width:36, height:36, objectFit:"contain", flexShrink:0 }}
+          />
           <div>
             <div style={{ fontSize:"0.85rem", fontWeight:"bold", color:"#C9A84C", letterSpacing:"0.5px" }}>
               WC 2026 · {leagueCode}
