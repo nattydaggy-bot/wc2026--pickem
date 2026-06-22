@@ -47,10 +47,31 @@ function exportPicksCSV(members, fixtures, results) {
   URL.revokeObjectURL(a.href);
 }
 
+// ── Has this match kicked off yet? ────────────────────────────────────
+// Uses ESPN state first (most accurate), then falls back to comparing
+// the fixture's date+time (ET = UTC-4 in summer) against Date.now().
+function matchHasStarted(match, result) {
+  if (result?.state === "in" || result?.completed) return true;
+  if (!match.date || !match.time) return false;
+  // Convert ET kickoff time to UTC (ET = UTC-4 during DST)
+  const [h, m] = match.time.split(":").map(Number);
+  const utcHour = String(h + 4 < 24 ? h + 4 : h + 4 - 24).padStart(2, "0");
+  const utcDate = h + 4 >= 24
+    ? new Date(match.date + "T00:00:00Z").getTime() + 86400000  // rolls to next day
+    : new Date(match.date + "T00:00:00Z").getTime();
+  const kickoffUTC = new Date(
+    h + 4 >= 24
+      ? new Date(utcDate).toISOString().split("T")[0] + "T" + utcHour + ":" + String(m).padStart(2,"0") + ":00Z"
+      : match.date + "T" + utcHour + ":" + String(m).padStart(2,"0") + ":00Z"
+  );
+  return Date.now() >= kickoffUTC.getTime();
+}
+
 // ── Single match row showing every member's pick ─────────────────────
 function PickRow({ match, members, username, result }) {
-  const isFT = result?.completed;
-  const isLive = result?.state === "in";
+  const isFT    = result?.completed;
+  const isLive  = result?.state === "in";
+  const started = matchHasStarted(match, result);
 
   return (
     <div style={{
@@ -58,24 +79,45 @@ function PickRow({ match, members, username, result }) {
       border:"1px solid rgba(255,255,255,0.055)",
       borderRadius:9, padding:"0.6rem 0.7rem", marginBottom:"0.35rem",
     }}>
+      {/* Match header */}
       <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"0.35rem" }}>
         <span style={{ fontWeight:"bold", fontSize:"0.82rem", color:"#ddd" }}>
           {match.home} <span style={{ color:"#444" }}>vs</span> {match.away}
         </span>
-        {(isFT || isLive) && (
-          <span style={{ fontSize:"0.7rem", color: isLive ? "#4CAF50" : "#888" }}>
-            {isLive ? "🔴 " : "FT "}{result.homeScore}–{result.awayScore}
-          </span>
-        )}
+        <span style={{ fontSize:"0.7rem", color: isLive ? "#4CAF50" : "#888" }}>
+          {isLive
+            ? `🔴 ${result.homeScore}–${result.awayScore}`
+            : isFT
+              ? `FT ${result.homeScore}–${result.awayScore}`
+              : !started
+                ? `🔒 ${match.time} ET`
+                : ""}
+        </span>
       </div>
 
+      {/* Member picks */}
       <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
         {Object.entries(members).map(([uname, data]) => {
-          const p = data?.picks?.[match.id];
-          const correct = isFT && result.actual && p === result.actual;
-          const wrong   = isFT && result.actual && p && p !== result.actual;
-          const isMe    = uname === username;
+          const p      = data?.picks?.[match.id];
+          const isMe   = uname === username;
           const display = data?.teamName || uname;
+
+          // Hide other players' picks until the match has kicked off
+          if (!started && !isMe) {
+            return (
+              <span key={uname} style={{
+                fontSize:"0.7rem", padding:"2px 9px", borderRadius:12,
+                background:"rgba(255,255,255,0.03)",
+                border:"1px solid rgba(255,255,255,0.07)",
+                color:"#444",
+              }}>
+                {display}: 🔒
+              </span>
+            );
+          }
+
+          const correct = isFT && result?.actual && p === result.actual;
+          const wrong   = isFT && result?.actual && p && p !== result.actual;
           return (
             <span key={uname} style={{
               fontSize:"0.7rem", padding:"2px 9px", borderRadius:12,
@@ -83,7 +125,12 @@ function PickRow({ match, members, username, result }) {
                         : wrong   ? "rgba(244,67,54,0.13)"
                         : isMe    ? "rgba(201,168,76,0.1)"
                         : "rgba(255,255,255,0.05)",
-              border:"1px solid " + (correct ? "#4CAF50" : wrong ? "#f44336" : isMe ? "rgba(201,168,76,0.35)" : "rgba(255,255,255,0.08)"),
+              border:"1px solid " + (
+                correct ? "#4CAF50"
+                : wrong ? "#f44336"
+                : isMe  ? "rgba(201,168,76,0.35)"
+                        : "rgba(255,255,255,0.08)"
+              ),
               color: correct ? "#4CAF50" : wrong ? "#f44336" : isMe ? "#C9A84C" : "#888",
               fontWeight: isMe ? "bold" : "normal",
             }}>
@@ -92,6 +139,13 @@ function PickRow({ match, members, username, result }) {
           );
         })}
       </div>
+
+      {/* Pre-match notice */}
+      {!started && (
+        <div style={{ fontSize:"0.65rem", color:"#444", marginTop:6, fontStyle:"italic" }}>
+          Others' picks hidden until kickoff
+        </div>
+      )}
     </div>
   );
 }
