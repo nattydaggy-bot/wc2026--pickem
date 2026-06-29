@@ -288,60 +288,55 @@ export const FIXTURES = [
   { id:"m059", round:"group", group:"J", date:"2026-06-27", time:"22:00",
     home:"Jordan",       away:"Argentina",        venue:"Dallas Stadium (AT&T)" },
 
-  // ======================================================================
-  // ROUND OF 32 — June 28 – July 2 (16 matches, TBD teams)
-  // No draw: knockout rules apply
-  // ======================================================================
-  { id:"m073", round:"r32", date:"2026-06-28", time:"12:00", home:"TBD 1A", away:"TBD 3BCDEF",  venue:"Los Angeles Stadium (SoFi)" },
-  { id:"m074", round:"r32", date:"2026-06-28", time:"15:00", home:"TBD 1B", away:"TBD 3ACDEG",  venue:"Atlanta Stadium (Mercedes-Benz)" },
-  { id:"m075", round:"r32", date:"2026-06-28", time:"19:00", home:"TBD 1C", away:"TBD 2D",       venue:"Toronto Stadium (BMO Field)" },
-  { id:"m076", round:"r32", date:"2026-06-28", time:"22:00", home:"TBD 1D", away:"TBD 2C",       venue:"Seattle Stadium (Lumen Field)" },
-  { id:"m077", round:"r32", date:"2026-06-29", time:"12:00", home:"TBD 1E", away:"TBD 3ABCFG",  venue:"Houston Stadium (NRG)" },
-  { id:"m078", round:"r32", date:"2026-06-29", time:"15:00", home:"TBD 1F", away:"TBD 3ABEGH",  venue:"Dallas Stadium (AT&T)" },
-  { id:"m079", round:"r32", date:"2026-06-29", time:"19:00", home:"TBD 1G", away:"TBD 2H",       venue:"Boston Stadium (Gillette)" },
-  { id:"m080", round:"r32", date:"2026-06-29", time:"22:00", home:"TBD 1H", away:"TBD 2G",       venue:"Miami Stadium (Hard Rock)" },
-  { id:"m081", round:"r32", date:"2026-06-30", time:"12:00", home:"TBD 1I", away:"TBD 3CDFGH",  venue:"New York New Jersey Stadium (MetLife)" },
-  { id:"m082", round:"r32", date:"2026-06-30", time:"15:00", home:"TBD 1J", away:"TBD 3ABCIJ",  venue:"Philadelphia Stadium (Lincoln Financial)" },
-  { id:"m083", round:"r32", date:"2026-06-30", time:"19:00", home:"TBD 1K", away:"TBD 2L",       venue:"Kansas City Stadium (Arrowhead)" },
-  { id:"m084", round:"r32", date:"2026-07-01", time:"12:00", home:"TBD 1L", away:"TBD 3EHIJK",  venue:"Atlanta Stadium (Mercedes-Benz)" },
-  { id:"m085", round:"r32", date:"2026-07-01", time:"15:00", home:"TBD 2A", away:"TBD 3ABIJK",  venue:"Mexico City Stadium (Estadio Azteca)" },
-  { id:"m086", round:"r32", date:"2026-07-01", time:"19:00", home:"TBD 2B", away:"TBD 3EFGIJ",  venue:"Guadalajara Stadium (Estadio Akron)" },
-  { id:"m087", round:"r32", date:"2026-07-02", time:"12:00", home:"TBD 2E", away:"TBD 2F",       venue:"San Francisco Bay Area Stadium (Levi's)" },
-  { id:"m088", round:"r32", date:"2026-07-02", time:"15:00", home:"TBD 2K", away:"TBD 2J",       venue:"Vancouver BC Place" },
 
   // ======================================================================
-  // ROUND OF 16 — July 4–5 (8 matches, TBD)
+  // ROUND OF 32 — June 28 – July 3 (16 matches, all confirmed)
+  // Source: Yahoo Sports / Fox Sports / NBC Sports — confirmed June 28, 2026
+  // No draw: knockout rules apply from here onward
   // ======================================================================
-  { id:"m089", round:"r16", date:"2026-07-04", time:"13:00", home:"TBD W73", away:"TBD W74",   venue:"Houston Stadium (NRG)" },
-  { id:"m090", round:"r16", date:"2026-07-04", time:"17:00", home:"TBD W75", away:"TBD W76",   venue:"Philadelphia Stadium (Lincoln Financial)" },
-  { id:"m091", round:"r16", date:"2026-07-04", time:"20:00", home:"TBD W77", away:"TBD W78",   venue:"Seattle Stadium (Lumen Field)" },
-  { id:"m092", round:"r16", date:"2026-07-04", time:"23:00", home:"TBD W79", away:"TBD W80",   venue:"Toronto Stadium (BMO Field)" },
-  { id:"m093", round:"r16", date:"2026-07-05", time:"13:00", home:"TBD W81", away:"TBD W82",   venue:"Kansas City Stadium (Arrowhead)" },
-  { id:"m094", round:"r16", date:"2026-07-05", time:"16:00", home:"TBD W83", away:"TBD W84",   venue:"New York New Jersey Stadium (MetLife)" },
-  { id:"m095", round:"r16", date:"2026-07-05", time:"19:00", home:"TBD W85", away:"TBD W86",   venue:"Atlanta Stadium (Mercedes-Benz)" },
-  { id:"m096", round:"r16", date:"2026-07-05", time:"22:00", home:"TBD W87", away:"TBD W88",   venue:"Los Angeles Stadium (SoFi)" },
 
-  // ======================================================================
-  // QUARTER-FINALS — July 9–10 (4 matches)
-  // ======================================================================
-  { id:"m097", round:"qf",    date:"2026-07-09", time:"15:00", home:"TBD W89", away:"TBD W90",  venue:"Dallas Stadium (AT&T)" },
-  { id:"m098", round:"qf",    date:"2026-07-09", time:"19:00", home:"TBD W91", away:"TBD W92",  venue:"Miami Stadium (Hard Rock)" },
-  { id:"m099", round:"qf",    date:"2026-07-10", time:"15:00", home:"TBD W93", away:"TBD W94",  venue:"Boston Stadium (Gillette)" },
-  { id:"m100", round:"qf",    date:"2026-07-10", time:"19:00", home:"TBD W95", away:"TBD W96",  venue:"Kansas City Stadium (Arrowhead)" },
+  // -- June 28 --
+  { id:"m073", round:"r32", date:"2026-06-28", time:"15:00",
+    home:"South Africa", away:"Canada", venue:"Los Angeles Stadium (SoFi)" },
 
-  // ======================================================================
-  // SEMI-FINALS — July 14–15 (2 matches)
-  // ======================================================================
-  { id:"m101", round:"sf",    date:"2026-07-14", time:"19:00", home:"TBD W97",  away:"TBD W98",  venue:"Atlanta Stadium (Mercedes-Benz)" },
-  { id:"m102", round:"sf",    date:"2026-07-15", time:"19:00", home:"TBD W99",  away:"TBD W100", venue:"Los Angeles Stadium (SoFi)" },
+  // -- June 29 --
+  { id:"m076", round:"r32", date:"2026-06-29", time:"21:00",
+    home:"Netherlands", away:"Morocco", venue:"Monterrey Stadium (Estadio BBVA)" },
+  { id:"m074", round:"r32", date:"2026-06-29", time:"13:00",
+    home:"Brazil", away:"Japan", venue:"Houston Stadium (NRG)" },
+  { id:"m075", round:"r32", date:"2026-06-29", time:"16:30",
+    home:"Germany", away:"Paraguay", venue:"Boston Stadium (Gillette)" },
 
-  // ======================================================================
-  // THIRD-PLACE PLAY-OFF — July 18
-  // ======================================================================
-  { id:"m103", round:"3rd",   date:"2026-07-18", time:"15:00", home:"TBD L101", away:"TBD L102", venue:"Miami Stadium (Hard Rock)" },
+  // -- June 30 --
+  { id:"m078", round:"r32", date:"2026-06-30", time:"17:00",
+    home:"France", away:"Sweden", venue:"New York New Jersey Stadium (MetLife)" },
+  { id:"m077", round:"r32", date:"2026-06-30", time:"13:00",
+    home:"Ivory Coast", away:"Norway", venue:"Dallas Stadium (AT&T)" },
+  { id:"m079", round:"r32", date:"2026-06-30", time:"21:00",
+    home:"Mexico", away:"Ecuador", venue:"Mexico City Stadium (Estadio Azteca)" },
 
-  // ======================================================================
-  // FINAL — July 19 (3:00 PM ET, MetLife Stadium)
-  // ======================================================================
-  { id:"m104", round:"final", date:"2026-07-19", time:"15:00", home:"TBD W101", away:"TBD W102", venue:"New York New Jersey Stadium (MetLife)" },
+  // -- July 1 --
+  { id:"m080", round:"r32", date:"2026-07-01", time:"12:00",
+    home:"England", away:"DR Congo", venue:"Atlanta Stadium (Mercedes-Benz)" },
+  { id:"m081", round:"r32", date:"2026-07-01", time:"16:00",
+    home:"USA", away:"Bosnia & Herzegovina", venue:"San Francisco Bay Area Stadium (Levi's)" },
+  { id:"m082", round:"r32", date:"2026-07-01", time:"20:00",
+    home:"Belgium", away:"Senegal", venue:"Seattle Stadium (Lumen Field)" },
+
+  // -- July 2 --
+  { id:"m083", round:"r32", date:"2026-07-02", time:"12:00",
+    home:"Portugal", away:"Croatia", venue:"Toronto Stadium (BMO Field)" },
+  { id:"m084", round:"r32", date:"2026-07-02", time:"16:00",
+    home:"Spain", away:"Austria", venue:"Los Angeles Stadium (SoFi)" },
+  { id:"m085", round:"r32", date:"2026-07-02", time:"20:00",
+    home:"Switzerland", away:"Algeria", venue:"Vancouver BC Place" },
+
+  // -- July 3 --
+  { id:"m086", round:"r32", date:"2026-07-03", time:"12:00",
+    home:"Argentina", away:"Cabo Verde", venue:"Miami Stadium (Hard Rock)" },
+  { id:"m087", round:"r32", date:"2026-07-03", time:"16:00",
+    home:"Colombia", away:"Ghana", venue:"Kansas City Stadium (Arrowhead)" },
+  { id:"m088", round:"r32", date:"2026-07-03", time:"20:00",
+    home:"Australia", away:"Egypt", venue:"Dallas Stadium (AT&T)" },
+
 ];
