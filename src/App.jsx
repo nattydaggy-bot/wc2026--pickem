@@ -5,7 +5,7 @@ import {
   savePicks, subscribeToLeague,
 } from "./firebase";
 import { FIXTURES, ROUND_META, MAX_SCORE } from "./data/fixtures";
-import { buildResults, calcMemberScore, tournamentStatus } from "./utils/scoring";
+import { buildResults, calcMemberScore, tournamentStatus, enrichByWinners } from "./utils/scoring";
 
 import LeagueEntry, { LAST_CODE_KEY } from "./components/LeagueEntry";
 import FixturesTab  from "./components/FixturesTab";
@@ -28,6 +28,7 @@ export default function App() {
   const [picks, setPicks]           = useState({});
   const [members, setMembers]       = useState({});
   const [results, setResults]       = useState({});
+  const [espnEvents, setEspnEvents] = useState([]);  // raw ESPN events for knockout enrichment
   const [activeTab, setActiveTab]   = useState("fixtures");
   const [entryError, setEntryError] = useState("");
   const [entryBusy, setEntryBusy]   = useState(false);
@@ -143,7 +144,9 @@ export default function App() {
       const res = await fetch("/api/scores");
       if (!res.ok) return;
       const data = await res.json();
-      setResults(buildResults(data.events || [], FIXTURES));
+      const events = data.events || [];
+      setEspnEvents(events);                              // store raw → triggers enrichment
+      setResults(buildResults(events, FIXTURES));         // base results (group stage)
     } catch { /* silent - keep last known results */ }
   }, []);
 
@@ -154,21 +157,35 @@ export default function App() {
     return () => clearInterval(t);
   }, [phase, refreshScores]);
 
-  // ── Merge "my" live picks into the members map (so I see my own
-  //    updates instantly even before Firestore round-trips back) ─────
+  // ── Auto-cascade bracket winners through all rounds ──────────────
+  // enrichByWinners reads "Winner M86" → looks up who won m086 → fills
+  // in the real team name, then cascades to QF, SF, and Final.
+  // Runs in multiple passes (R32→R16, R16→QF, QF→SF, SF→Final/3rd).
+  // Recalculates automatically every 60 s when ESPN data refreshes.
+  const enrichedFixtures = useMemo(
+    () => enrichByWinners(FIXTURES, espnEvents),
+    [espnEvents]
+  );
+
+  // Re-calculate results using enriched fixtures so knockout scoring works
+  const enrichedResults = useMemo(
+    () => buildResults(espnEvents, enrichedFixtures),
+    [espnEvents, enrichedFixtures]
+  );
+
   const mergedMembers = useMemo(() => ({
     ...members,
     [username]: { ...(members[username] || {}), picks, teamName },
   }), [members, username, picks, teamName]);
 
   const myScore = useMemo(
-    () => calcMemberScore(picks, FIXTURES, results, ROUND_META),
-    [picks, results]
+    () => calcMemberScore(picks, enrichedFixtures, enrichedResults, ROUND_META),
+    [picks, enrichedFixtures, enrichedResults]
   );
 
   const status = useMemo(
-    () => tournamentStatus(results, FIXTURES.length),
-    [results]
+    () => tournamentStatus(enrichedResults, FIXTURES.length),
+    [enrichedResults]
   );
 
   // ── Entry screens (loading / home / create / join / login) ──────────
@@ -266,26 +283,26 @@ export default function App() {
       <main style={{ flex:1, overflowY:"auto", paddingBottom:"72px" }}>
         {activeTab === "fixtures" && (
           <FixturesTab
-            fixtures={FIXTURES}
+            fixtures={enrichedFixtures}
             picks={picks}
-            results={results}
+            results={enrichedResults}
             onPick={handlePick}
           />
         )}
         {activeTab === "picks" && (
           <PicksTab
-            fixtures={FIXTURES}
+            fixtures={enrichedFixtures}
             members={mergedMembers}
             username={username}
-            results={results}
+            results={enrichedResults}
           />
         )}
         {activeTab === "standings" && (
           <StandingsTab
-            fixtures={FIXTURES}
+            fixtures={enrichedFixtures}
             members={mergedMembers}
             username={username}
-            results={results}
+            results={enrichedResults}
             status={status}
             leagueCode={leagueCode}
             onRefresh={refreshScores}
