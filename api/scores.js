@@ -1,26 +1,22 @@
-// api/scores.js  — Vercel Serverless Function
-// Proxies ESPN's World Cup scoreboard so the browser never hits ESPN
-// directly (avoids CORS) and so we can pull results for the WHOLE
-// tournament date range at once (needed to retro-score earlier matches).
+// api/scores.js — Vercel Serverless Function
+// Proxies ESPN's EPL scoreboard so the browser avoids CORS.
+// Fetches today ±4 days by default so weekend GWs are always covered.
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET");
   res.setHeader("Cache-Control", "s-maxage=30, stale-while-revalidate=120");
 
-  // Default range = entire WC2026 tournament (June 11 - July 19, 2026).
-  // Can be overridden with ?dates=YYYYMMDD-YYYYMMDD if ever needed.
-  const dates = (req.query && req.query.dates) || "20260611-20260719";
+  const today = new Date();
+  const pad   = n => String(n).padStart(2, "0");
+  const fmt   = d => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
+  const from  = new Date(today - 4 * 86400000);
+  const to    = new Date(today + 4 * 86400000);
+  const dates = req.query?.dates || `${fmt(from)}-${fmt(to)}`;
 
   try {
-    const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${dates}`;
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      return res.status(response.status).json({ error: "ESPN API error", status: response.status });
-    }
-
-    const data = await response.json();
-    return res.status(200).json(data);
+    const url  = `https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard?dates=${dates}`;
+    const resp = await fetch(url);
+    if (!resp.ok) return res.status(resp.status).json({ error: "ESPN API error" });
+    return res.status(200).json(await resp.json());
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

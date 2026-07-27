@@ -1,339 +1,220 @@
-// src/App.jsx
 import { useState, useEffect, useMemo, useCallback } from "react";
-import {
-  createLeague, joinLeague, leagueExists, getMember,
-  savePicks, subscribeToLeague,
-} from "./firebase";
-import { FIXTURES, ROUND_META, MAX_SCORE } from "./data/fixtures";
-import { buildResults, calcMemberScore, tournamentStatus, enrichByWinners } from "./utils/scoring";
-
-import LeagueEntry, { LAST_CODE_KEY } from "./components/LeagueEntry";
+import { createLeague, joinLeague, getMember, leagueExists, savePicks, subscribeToLeague } from "./firebase";
+import { buildResults, calcMemberScore, seasonStatus } from "./utils/scoring";
+import LeagueEntry  from "./components/LeagueEntry";
 import FixturesTab  from "./components/FixturesTab";
 import PicksTab     from "./components/PicksTab";
 import StandingsTab from "./components/StandingsTab";
 
-const SESSION_KEY = "wc2026_session";
-const CODE_CHARS  = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I — avoids confusion
-
-function genCode() {
-  return Array.from({ length: 6 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join("");
-}
+const FONT = "'Times New Roman', Times, serif";
+const LAST  = "epl_session";
+const CACHE = "epl_fixtures_cache";
 
 export default function App() {
-  // phase: "loading" | "entry" | "app"
-  const [phase, setPhase]       = useState("loading");
+  const [view,       setView]       = useState("entry");
+  const [activeTab,  setActiveTab]  = useState("fixtures");
   const [leagueCode, setLeagueCode] = useState("");
-  const [username, setUsername]     = useState("");
-  const [teamName, setTeamName]     = useState("");
-  const [picks, setPicks]           = useState({});
-  const [members, setMembers]       = useState({});
-  const [results, setResults]       = useState({});
-  const [espnEvents, setEspnEvents] = useState([]);  // raw ESPN events for knockout enrichment
-  const [activeTab, setActiveTab]   = useState("fixtures");
-  const [entryError, setEntryError] = useState("");
-  const [entryBusy, setEntryBusy]   = useState(false);
+  const [username,   setUsername]   = useState("");
+  const [teamName,   setTeamName]   = useState("");
+  const [picks,      setPicks]      = useState({});
+  const [members,    setMembers]    = useState({});
+  const [fixtures,   setFixtures]   = useState([]);
+  const [loadingFix, setLoadingFix] = useState(true);
+  const [espnEvents, setEspnEvents] = useState([]);
+  const [authError,  setAuthError]  = useState("");
+  const [authBusy,   setAuthBusy]   = useState(false);
 
-  // ── Restore session from localStorage on first load ────────────────
+  /* ── Restore session from localStorage ── */
   useEffect(() => {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) { setPhase("entry"); return; }
-    (async () => {
+    try {
+      const s = JSON.parse(localStorage.getItem(LAST) || "null");
+      if (s?.code && s?.username) {
+        setLeagueCode(s.code); setUsername(s.username);
+        setTeamName(s.teamName || s.username); setPicks(s.picks || {});
+        setView("app");
+      }
+    } catch {}
+  }, []);
+
+  /* ── Load EPL fixtures from ESPN (cached 24 h) ── */
+  useEffect(() => {
+    async function load() {
       try {
-        const { leagueCode: c, username: u } = JSON.parse(raw);
-        const m = await getMember(c, u);
-        if (m) {
-          setLeagueCode(c);
-          setUsername(u);
-          setTeamName(m.teamName || u);
-          setPicks(m.picks || {});
-          setPhase("app");
-        } else {
-          localStorage.removeItem(SESSION_KEY);
-          setPhase("entry");
+        const raw  = localStorage.getItem(CACHE);
+        const meta = localStorage.getItem(CACHE + "_ts");
+        if (raw && meta && Date.now() - +meta < 86400000) {
+          setFixtures(JSON.parse(raw)); setLoadingFix(false); return;
         }
-      } catch {
-        localStorage.removeItem(SESSION_KEY);
-        setPhase("entry");
-      }
-    })();
-  }, []);
-
-  function persist(code, user) {
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ leagueCode: code, username: user }));
-    localStorage.setItem(LAST_CODE_KEY, code); // remembered even after logout
-  }
-
-  // ── Create / Join / Login handlers (passed to LeagueEntry) ─────────
-  const handleCreate = useCallback(async ({ username: u, teamName: t }) => {
-    setEntryBusy(true); setEntryError("");
-    try {
-      let code, result;
-      for (let i = 0; i < 5; i++) {
-        code = genCode();
-        result = await createLeague(code, u.trim(), (t || u).trim());
-        if (!result.error) break;
-      }
-      if (result.error) { setEntryError(result.error); return; }
-      persist(code, u.trim());
-      setLeagueCode(code); setUsername(u.trim()); setTeamName((t || u).trim()); setPicks({});
-      setPhase("app");
-      // Surface the code to the creator immediately
-      setTimeout(() => {
-        alert("League created! \n\nYour invite code is: " + code + "\n\nShare it with friends so they can join. You can find it again anytime in the Standings tab.");
-      }, 200);
-    } finally {
-      setEntryBusy(false);
+        const r = await fetch("/api/fixtures");
+        const d = await r.json();
+        const fs = d.fixtures || [];
+        setFixtures(fs);
+        localStorage.setItem(CACHE,        JSON.stringify(fs));
+        localStorage.setItem(CACHE + "_ts", String(Date.now()));
+      } catch (e) { console.warn("Fixture fetch failed", e); }
+      finally     { setLoadingFix(false); }
     }
+    load();
   }, []);
 
-  const handleJoin = useCallback(async ({ code, username: u, teamName: t }) => {
-    setEntryBusy(true); setEntryError("");
-    try {
-      const c = code.trim().toUpperCase();
-      if (!(await leagueExists(c))) { setEntryError("League not found. Check the code and try again."); return; }
-      const result = await joinLeague(c, u.trim(), (t || u).trim());
-      if (result.error) { setEntryError(result.error); return; }
-      persist(c, u.trim());
-      setLeagueCode(c); setUsername(u.trim()); setTeamName((t || u).trim()); setPicks({});
-      setPhase("app");
-    } finally {
-      setEntryBusy(false);
-    }
-  }, []);
-
-  const handleLogin = useCallback(async ({ code, username: u }) => {
-    setEntryBusy(true); setEntryError("");
-    try {
-      const c = code.trim().toUpperCase();
-      if (!(await leagueExists(c))) { setEntryError("League not found. Check the code and try again."); return; }
-      const m = await getMember(c, u.trim());
-      if (!m) { setEntryError("No player found with that username in this league."); return; }
-      persist(c, u.trim());
-      setLeagueCode(c); setUsername(u.trim()); setTeamName(m.teamName || u.trim()); setPicks(m.picks || {});
-      setPhase("app");
-    } finally {
-      setEntryBusy(false);
-    }
-  }, []);
-
-  function handleLogout() {
-    if (!window.confirm("Log out of this league? You can log back in anytime with your username.")) return;
-    localStorage.removeItem(SESSION_KEY);
-    setPhase("entry");
-    setLeagueCode(""); setUsername(""); setTeamName(""); setPicks({});
-    setMembers({}); setResults({}); setActiveTab("fixtures"); setEntryError("");
-  }
-
-  // ── Real-time member list (for leaderboard / all-picks) ─────────────
-  useEffect(() => {
-    if (phase !== "app" || !leagueCode) return;
-    return subscribeToLeague(leagueCode, setMembers);
-  }, [phase, leagueCode]);
-
-  // ── Save a pick (optimistic local update + Firestore write) ────────
-  async function handlePick(matchId, prediction) {
-    const updated = { ...picks, [matchId]: prediction };
-    setPicks(updated);
-    try { await savePicks(leagueCode, username, updated, teamName); }
-    catch (e) { console.warn("Save failed:", e); }
-  }
-
-  // ── Live scores via /api/scores (Vercel proxy -> ESPN) ───────────────
+  /* ── ESPN live scores (every 60 s) ── */
   const refreshScores = useCallback(async () => {
     try {
-      const res = await fetch("/api/scores");
-      if (!res.ok) return;
-      const data = await res.json();
-      const events = data.events || [];
-      setEspnEvents(events);                              // store raw → triggers enrichment
-      setResults(buildResults(events, FIXTURES));         // base results (group stage)
-    } catch { /* silent - keep last known results */ }
+      const r = await fetch("/api/scores");
+      if (!r.ok) return;
+      setEspnEvents((await r.json()).events || []);
+    } catch {}
   }, []);
 
   useEffect(() => {
-    if (phase !== "app") return;
+    if (view !== "app") return;
     refreshScores();
-    const t = setInterval(refreshScores, 30_000);
+    const t = setInterval(refreshScores, 60000);
     return () => clearInterval(t);
-  }, [phase, refreshScores]);
+  }, [view, refreshScores]);
 
-  // ── Auto-cascade bracket winners through all rounds ──────────────
-  // enrichByWinners reads "Winner M86" → looks up who won m086 → fills
-  // in the real team name, then cascades to QF, SF, and Final.
-  // Runs in multiple passes (R32→R16, R16→QF, QF→SF, SF→Final/3rd).
-  // Recalculates automatically every 60 s when ESPN data refreshes.
-  const enrichedFixtures = useMemo(
-    () => enrichByWinners(FIXTURES, espnEvents),
-    [espnEvents]
-  );
+  /* ── Firestore real-time listener ── */
+  useEffect(() => {
+    if (!leagueCode) return;
+    return subscribeToLeague(leagueCode, setMembers);
+  }, [leagueCode]);
 
-  // Re-calculate results using enriched fixtures so knockout scoring works
-  const enrichedResults = useMemo(
-    () => buildResults(espnEvents, enrichedFixtures),
-    [espnEvents, enrichedFixtures]
-  );
-
+  /* ── Derived state ── */
+  const results = useMemo(() => buildResults(espnEvents, fixtures), [espnEvents, fixtures]);
   const mergedMembers = useMemo(() => ({
     ...members,
     [username]: { ...(members[username] || {}), picks, teamName },
   }), [members, username, picks, teamName]);
+  const myStats = useMemo(() => calcMemberScore(picks, fixtures, results), [picks, fixtures, results]);
+  const status  = useMemo(() => seasonStatus(results), [results]);
 
-  const myScore = useMemo(
-    () => calcMemberScore(picks, enrichedFixtures, enrichedResults, ROUND_META),
-    [picks, enrichedFixtures, enrichedResults]
-  );
-
-  const status = useMemo(
-    () => tournamentStatus(enrichedResults, FIXTURES.length),
-    [enrichedResults]
-  );
-
-  // ── Entry screens (loading / home / create / join / login) ──────────
-  if (phase === "loading") {
-    return (
-      <div style={{
-        minHeight:"100vh", background:"#0a1628", color:"#C9A84C",
-        display:"flex", alignItems:"center", justifyContent:"center",
-        fontFamily:"'Times New Roman', Times, serif", fontSize:"1.1rem"
-      }}>
-        ⚽ Loading…
-      </div>
-    );
+  /* ── Auth helpers ── */
+  function saveSession(code, user, tName, savedPicks) {
+    localStorage.setItem(LAST, JSON.stringify({ code, username: user, teamName: tName, picks: savedPicks }));
+  }
+  async function handleCreate({ username: u, teamName: t }) {
+    setAuthBusy(true); setAuthError("");
+    try {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let code, result, tries = 0;
+      do { code = Array.from({length:6}, ()=>chars[Math.floor(Math.random()*chars.length)]).join(""); result = await createLeague(code, u, t); tries++; }
+      while (result.error && tries < 6);
+      if (result.error) return setAuthError(result.error);
+      setLeagueCode(code); setUsername(u); setTeamName(t || u); setPicks({});
+      saveSession(code, u, t || u, {});
+      setView("app");
+    } finally { setAuthBusy(false); }
+  }
+  async function handleJoin({ code, username: u, teamName: t }) {
+    setAuthBusy(true); setAuthError("");
+    try {
+      if (!(await leagueExists(code))) return setAuthError("League not found.");
+      const r = await joinLeague(code, u, t);
+      if (r.error) return setAuthError(r.error);
+      setLeagueCode(code); setUsername(u); setTeamName(t || u); setPicks({});
+      saveSession(code, u, t || u, {});
+      setView("app");
+    } finally { setAuthBusy(false); }
+  }
+  async function handleLogin({ code: c, username: u }) {
+    setAuthBusy(true); setAuthError("");
+    try {
+      const savedCode = c || leagueCode || (JSON.parse(localStorage.getItem(LAST)||"null")?.code);
+      if (!savedCode) return setAuthError("No saved league. Please join first.");
+      if (!(await leagueExists(savedCode))) return setAuthError("League not found.");
+      const member = await getMember(savedCode, u);
+      if (!member) return setAuthError("Username not found. Use 'Join' to create your account.");
+      const p = member.picks || {};
+      setLeagueCode(savedCode); setUsername(u); setTeamName(member.teamName || u); setPicks(p);
+      saveSession(savedCode, u, member.teamName || u, p);
+      setView("app");
+    } finally { setAuthBusy(false); }
+  }
+  async function handlePick(matchId, pred) {
+    const updated = { ...picks, [matchId]: pred };
+    setPicks(updated);
+    saveSession(leagueCode, username, teamName, updated);
+    await savePicks(leagueCode, username, updated, teamName);
+  }
+  function handleLogout() {
+    localStorage.removeItem(LAST);
+    setView("entry"); setLeagueCode(""); setUsername(""); setTeamName(""); setPicks({}); setMembers({});
   }
 
-  if (phase === "entry") {
-    return (
-      <LeagueEntry
-        onCreate={handleCreate}
-        onJoin={handleJoin}
-        onLogin={handleLogin}
-        busy={entryBusy}
-        error={entryError}
-        clearError={() => setEntryError("")}
-      />
-    );
-  }
+  if (view === "entry") return (
+    <LeagueEntry onCreate={handleCreate} onJoin={handleJoin} onLogin={handleLogin}
+      busy={authBusy} error={authError} clearError={() => setAuthError("")}
+      savedCode={JSON.parse(localStorage.getItem(LAST)||"null")?.code || ""} />
+  );
 
-  // ── Main app (logged in) ─────────────────────────────────────────────
   const TABS = [
-    { id: "fixtures",  label: "Fixtures",  icon: "📅" },
-    { id: "picks",     label: "All Picks", icon: "👥" },
-    { id: "standings", label: "Standings", icon: "🏆" },
+    { id:"fixtures",  label:"Fixtures",  icon:"📅" },
+    { id:"picks",     label:"All Picks", icon:"👥" },
+    { id:"standings", label:"Standings", icon:"🏆" },
   ];
+  const statusColor = status.label==="Live" ? "#22c55e" : status.label==="In Progress" ? "#60a5fa" : "#888";
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#0a1628",
-      color: "white",
-      fontFamily: "'Times New Roman', Times, serif",
-      display: "flex",
-      flexDirection: "column",
-      maxWidth: 520,
-      margin: "0 auto",
-      position: "relative",
-    }}>
+    <div style={{ minHeight:"100vh", background:"#0d1117", color:"#fff", fontFamily:FONT,
+      display:"flex", flexDirection:"column", maxWidth:520, margin:"0 auto", position:"relative" }}>
 
-      {/* Compact header */}
-      <header style={{
-        background: "linear-gradient(135deg,#0a1628 0%,#152035 100%)",
-        borderBottom: "2px solid #C9A84C",
-        padding: "0.6rem 1rem",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        position: "sticky",
-        top: 0,
-        zIndex: 10,
-      }}>
-        <div style={{ display:"flex", alignItems:"center", gap:"0.6rem" }}>
-          <img
-            src="/logo.svg"
-            alt="logo"
-            style={{ width:36, height:36, objectFit:"contain", flexShrink:0 }}
-          />
+      {/* Header */}
+      <header style={{ background:"#161b22", borderBottom:"1px solid rgba(124,58,237,0.35)",
+        padding:"0.6rem 0.85rem", display:"flex", justifyContent:"space-between",
+        alignItems:"center", position:"sticky", top:0, zIndex:10 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:"0.55rem" }}>
+          <img src="/logo.svg" alt="logo" style={{ width:34, height:34, objectFit:"contain" }} />
           <div>
-            <div style={{ fontSize:"0.85rem", fontWeight:"bold", color:"#C9A84C", letterSpacing:"0.5px" }}>
-              WC 2026 · {leagueCode}
+            <div style={{ fontSize:"0.62rem", letterSpacing:"2px", color:"#7c3aed", fontWeight:"bold" }}>
+              PREMIER LEAGUE 2026/27
             </div>
-            <div style={{ fontSize:"0.7rem", color:"#999" }}>
-              {teamName}{Object.keys(mergedMembers).length === 1 ? " (SOLO)" : " · " + Object.keys(mergedMembers).length + " players"}
+            <div style={{ fontSize:"0.72rem", color:"#888" }}>
+              {leagueCode} · {teamName}
             </div>
           </div>
         </div>
-
         <div style={{ textAlign:"right" }}>
           <div style={{ fontSize:"0.95rem", fontWeight:"bold" }}>
-            {myScore.score}<span style={{ color:"#666", fontSize:"0.75rem" }}>/{MAX_SCORE}</span>
+            {myStats.score}<span style={{ color:"#444", fontSize:"0.7rem" }}>/{fixtures.length}</span>
           </div>
-          <div style={{ fontSize:"0.62rem", color:"#777", marginTop:1, textTransform:"capitalize" }}>
-            {status.label}
-          </div>
+          <div style={{ fontSize:"0.62rem", color:statusColor }}>{status.label}</div>
           <button onClick={handleLogout} style={{
-            border:"none", background:"none", color:"#666",
-            fontSize:"0.68rem", cursor:"pointer", padding:0, marginTop:2,
-            textDecoration:"underline"
-          }}>
-            Log out
-          </button>
+            fontSize:"0.62rem", color:"#555", background:"none", border:"none",
+            cursor:"pointer", textDecoration:"underline", padding:0, fontFamily:FONT,
+          }}>Log out</button>
         </div>
       </header>
 
       {/* Tab content */}
-      <main style={{ flex:1, overflowY:"auto", paddingBottom:"72px" }}>
-        {activeTab === "fixtures" && (
-          <FixturesTab
-            fixtures={enrichedFixtures}
-            picks={picks}
-            results={enrichedResults}
-            onPick={handlePick}
-          />
-        )}
-        {activeTab === "picks" && (
-          <PicksTab
-            fixtures={enrichedFixtures}
-            members={mergedMembers}
-            username={username}
-            results={enrichedResults}
-          />
-        )}
-        {activeTab === "standings" && (
-          <StandingsTab
-            fixtures={enrichedFixtures}
-            members={mergedMembers}
-            username={username}
-            results={enrichedResults}
-            status={status}
-            leagueCode={leagueCode}
-            onRefresh={refreshScores}
-          />
+      <main style={{ flex:1, overflowY:"auto", paddingBottom:72 }}>
+        {loadingFix ? (
+          <div style={{ textAlign:"center", padding:"4rem 1rem", color:"#555" }}>
+            <div style={{ fontSize:"2rem", marginBottom:"0.75rem" }}>⚽</div>
+            Loading Premier League fixtures…
+          </div>
+        ) : (
+          <>
+            {activeTab==="fixtures"  && <FixturesTab  fixtures={fixtures} picks={picks} results={results} onPick={handlePick} />}
+            {activeTab==="picks"     && <PicksTab     fixtures={fixtures} members={mergedMembers} username={username} results={results} />}
+            {activeTab==="standings" && <StandingsTab fixtures={fixtures} members={mergedMembers} username={username} results={results} status={status} leagueCode={leagueCode} onRefresh={refreshScores} />}
+          </>
         )}
       </main>
 
-      {/* Bottom navigation */}
-      <nav style={{
-        position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)",
-        width:"100%", maxWidth:520,
-        background:"#0d1e35",
-        borderTop:"1px solid rgba(201,168,76,0.25)",
-        display:"flex", zIndex:20,
-      }}>
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              flex:1, padding:"0.7rem 0.25rem 0.45rem",
-              border:"none", background:"none", cursor:"pointer",
-              display:"flex", flexDirection:"column", alignItems:"center", gap:3,
-              color: activeTab === tab.id ? "#C9A84C" : "#555",
-              borderTop: activeTab === tab.id ? "2px solid #C9A84C" : "2px solid transparent",
-            }}
-          >
-            <span style={{ fontSize:"1.4rem" }}>{tab.icon}</span>
-            <span style={{ fontSize:"0.68rem", fontWeight: activeTab === tab.id ? "bold" : "normal" }}>
-              {tab.label}
-            </span>
+      {/* Bottom nav */}
+      <nav style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)",
+        width:"100%", maxWidth:520, background:"#161b22",
+        borderTop:"1px solid rgba(124,58,237,0.25)", display:"flex", zIndex:20 }}>
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+            flex:1, padding:"0.65rem 0.25rem 0.45rem", border:"none", background:"none",
+            cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:3,
+            color: activeTab===t.id ? "#7c3aed" : "#555",
+            borderTop: activeTab===t.id ? "2px solid #7c3aed" : "2px solid transparent",
+            fontFamily:FONT,
+          }}>
+            <span style={{ fontSize:"1.3rem" }}>{t.icon}</span>
+            <span style={{ fontSize:"0.65rem", fontWeight: activeTab===t.id?"bold":"normal" }}>{t.label}</span>
           </button>
         ))}
       </nav>
