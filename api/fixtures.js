@@ -103,6 +103,20 @@ export default async function handler(req, res) {
         return a.date.localeCompare(b.date);
       });
 
+    // Normalize GW numbers: if ESPN starts from 2 (Community Shield = GW1),
+    // shift everything down so the first league gameweek is always GW1.
+    const gwNums = fixtures.map(f => f.gw).filter(g => g != null && g > 0);
+    if (gwNums.length > 0) {
+      const minGw  = Math.min(...gwNums);
+      const offset = minGw - 1; // e.g. if minGw=2, offset=1
+      if (offset > 0) {
+        fixtures = fixtures.map(f => f.gw != null
+          ? { ...f, gw: f.gw - offset, round: `gw${f.gw - offset}` }
+          : f
+        );
+      }
+    }
+
     return res.status(200).json({ fixtures, total: fixtures.length });
   } catch (err) {
     return res.status(500).json({ error: err.message, fixtures: [] });

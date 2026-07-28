@@ -7,7 +7,7 @@ import PicksTab     from "./components/PicksTab";
 import StandingsTab from "./components/StandingsTab";
 
 const LAST  = "epl_session";
-const CACHE = "epl_fixtures_v2";  // bump to clear old cache
+const CACHE = "epl_fixtures_v3";  // bump to clear old cache
 const GREEN  = "#00ff85";
 const PURPLE = "#37003c";
 
