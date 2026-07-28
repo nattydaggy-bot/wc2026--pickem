@@ -56,7 +56,7 @@ export default async function handler(req, res) {
 
     const allEvents = responses.flatMap(d => d.events || []);
 
-    const fixtures = allEvents
+    let fixtures = allEvents
       .filter(ev => ev.competitions?.[0]?.competitors?.length >= 2)
       .map(ev => {
         const comp = ev.competitions[0];
