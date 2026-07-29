@@ -20,7 +20,7 @@ export default function LeagueEntry({onCreate,onJoin,onLogin,busy,error,clearErr
     setLocal("");
     if(mode==="create"){if(!user.trim())return setLocal("Please enter a username.");onCreate({username:user.trim(),teamName:team.trim()});}
     else if(mode==="join"){if(!code.trim())return setLocal("Please enter a league code.");if(!user.trim())return setLocal("Please enter a username.");onJoin({code:code.trim().toUpperCase(),username:user.trim(),teamName:team.trim()});}
-    else{if(!user.trim())return setLocal("Please enter your username.");onLogin({code:savedCode,username:user.trim()});}
+    else{if(!savedCode&&!code.trim())return setLocal("Please enter a league code.");if(!user.trim())return setLocal("Please enter your username.");onLogin({code:(savedCode||code.trim().toUpperCase()),username:user.trim()});}
   }
 
   const CFG={
@@ -86,13 +86,18 @@ export default function LeagueEntry({onCreate,onJoin,onLogin,busy,error,clearErr
                   onChange={e=>setCode(e.target.value.toUpperCase())} autoComplete="off"/>
               </>)}
 
-              {mode==="login"&&savedCode&&(
+              {mode==="login"&&(savedCode?(
                 <div style={{background:"rgba(0,255,133,0.06)",border:`1px solid ${GREEN}33`,borderRadius:8,padding:"0.55rem 0.85rem",marginTop:"0.85rem",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span style={{fontSize:"0.62rem",color:"rgba(255,255,255,0.3)"}}>League</span>
+                  <span style={{fontSize:"0.62rem",color:"rgba(255,255,255,0.3)"}}>Saved league</span>
                   <span style={{fontSize:"1rem",fontWeight:"bold",letterSpacing:3,color:GREEN}}>{savedCode}</span>
-                  <span style={{fontSize:"0.6rem",color:"rgba(255,255,255,0.2)"}}>saved</span>
+                  <span style={{fontSize:"0.6rem",color:"rgba(255,255,255,0.2)"}}>auto</span>
                 </div>
-              )}
+              ):(<>
+                <label style={label}>LEAGUE CODE</label>
+                <input style={{...inputStyle,letterSpacing:3,textTransform:"uppercase"}}
+                  placeholder="e.g. ABC123" maxLength={6} value={code}
+                  onChange={e=>setCode(e.target.value.toUpperCase())} autoComplete="off"/>
+              </>))}
 
               <label style={label}>USERNAME (PRIVATE)</label>
               <input style={inputStyle} placeholder="e.g. natty99" value={user} onChange={e=>setUser(e.target.value)} autoComplete="off"/>
