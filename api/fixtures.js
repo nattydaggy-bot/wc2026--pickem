@@ -95,6 +95,12 @@ export default async function handler(req, res) {
       }
     }
 
+    // Cap at GW38 — ESPN includes cup/playoff events that inflate the count
+    fixtures = fixtures.filter(f => f.gw == null || f.gw <= 38);
+
+    // Cap at GW38: ESPN includes FA Cup / League Cup weeks beyond the PL season
+    fixtures = fixtures.filter(f => f.gw == null || f.gw <= 38);
+
     return res.status(200).json({ fixtures, total: fixtures.length });
   } catch (err) {
     return res.status(500).json({ error: err.message, fixtures: [] });
