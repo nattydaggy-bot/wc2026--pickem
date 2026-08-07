@@ -53,50 +53,58 @@ export default function WeekWinner({ fixtures, members, results, banker = {} }) 
     return Array.from(gws).sort((a, b) => a - b);
   }, [fixtures]);
 
+  // Calculate if GW is complete (all matches finished)
+  const isGWComplete = useMemo(() => {
+    const gw = currentGw || activeGw;
+    const gwFixtures = fixtures.filter(f => f.gw === gw);
+    if (gwFixtures.length === 0) return false;
+    return gwFixtures.every(f => results[f.id]?.completed);
+  }, [fixtures, results, currentGw, activeGw]);
+
   return (
     <div style={{ 
       background: "rgba(255,215,0,0.05)", 
       border: `1px solid ${GOLD}33`,
       borderRadius: 12, 
-      padding: "0.85rem 1rem",
-      marginBottom: "0.75rem",
+      padding: "0.7rem 0.85rem",
+      marginBottom: "0.65rem",
       fontFamily: FONT,
     }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.4rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <div>
-            <div style={{ fontSize: "0.6rem", color: GOLD, letterSpacing: "2px", fontWeight: "bold" }}>
-              GW {currentGw || activeGw} WINNER
+            <div style={{ fontSize: "0.55rem", color: GOLD, letterSpacing: "2px", fontWeight: "bold" }}>
+              {isGWComplete ? "✅ GW COMPLETE" : `GW ${currentGw || activeGw}`}
             </div>
             {winner ? (
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: 2 }}>
-                <span style={{ fontSize: "1.2rem" }}>🏆</span>
-                <span style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#fff" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginTop: 1 }}>
+                <span style={{ fontSize: "1.1rem" }}>🏆</span>
+                <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#fff" }}>
                   {winner[1].teamName}
                 </span>
-                <span style={{ fontSize: "0.8rem", color: GOLD }}>
+                <span style={{ fontSize: "0.7rem", color: GOLD }}>
                   {winner[1].score} pts
                 </span>
-                <span style={{ fontSize: "0.55rem", color: "#555" }}>
+                <span style={{ fontSize: "0.5rem", color: "#555" }}>
                   ({winner[1].correct}/{winner[1].total})
                 </span>
               </div>
             ) : (
-              <span style={{ color: "#444", fontSize: "0.8rem" }}>No picks yet this GW</span>
+              <span style={{ color: "#444", fontSize: "0.7rem" }}>No picks yet this GW</span>
             )}
           </div>
         </div>
-        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
           <select
             value={currentGw || activeGw}
             onChange={e => setCurrentGw(Number(e.target.value))}
             style={{
-              padding: "0.2rem 0.5rem",
+              padding: "0.15rem 0.4rem",
               borderRadius: 6,
               border: `1px solid ${GOLD}33`,
               background: "rgba(0,0,0,0.3)",
               color: "#aaa",
-              fontSize: "0.65rem",
+              fontSize: "0.6rem",
               fontFamily: FONT,
             }}
           >
@@ -104,14 +112,14 @@ export default function WeekWinner({ fixtures, members, results, banker = {} }) 
               <option key={g} value={g}>GW {g}</option>
             ))}
           </select>
-          <div style={{ display: "flex", gap: 3 }}>
+          <div style={{ display: "flex", gap: 2 }}>
             {sorted.slice(0, 3).map(([uname, data], i) => (
               <div key={uname} style={{ 
-                fontSize: "0.55rem", 
+                fontSize: "0.5rem", 
                 color: i === 0 ? GOLD : "#555",
                 background: "rgba(255,255,255,0.04)",
-                padding: "2px 6px",
-                borderRadius: 8,
+                padding: "1px 5px",
+                borderRadius: 6,
               }}>
                 {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"} {data.teamName}
               </div>

@@ -1,6 +1,6 @@
 // src/components/FixturesTab.jsx
-import { useState, useMemo } from "react";
-import { matchHasStarted } from "../utils/scoring";
+import { useState, useMemo, useEffect } from "react";
+import { matchHasStarted, calculateTeamForm, getLeaguePosition, getGWDeadline } from "../utils/scoring";
 
 const FONT   = "'Times New Roman', Times, serif";
 const PURPLE = "#37003c";
@@ -54,27 +54,60 @@ function SeasonCountdown({ onRefresh }) {
   );
 }
 
-function TeamBlock({ name, short, logo, pick, side }) {
+function TeamBlock({ name, short, logo, pick, side, fixtures, results }) {
   const sel = pick === side;
+  const form = calculateTeamForm(name, fixtures, results);
+  const position = getLeaguePosition(name, fixtures, results);
+  
+  const formColors = {
+    'W': '#22c55e',
+    'D': '#eab308',
+    'L': '#ef4444'
+  };
+
   return (
-    <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4,
-      padding:"0.5rem 0.25rem",
+    <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3,
+      padding:"0.4rem 0.25rem",
       background: sel ? "rgba(0,255,133,0.08)" : "transparent",
       borderRadius:8 }}>
       {logo
-        ? <img src={logo} alt={name} style={{ width:38, height:38, objectFit:"contain" }}
+        ? <img src={logo} alt={name} style={{ width:36, height:36, objectFit:"contain" }}
             onError={e => { e.target.style.display="none"; }} />
-        : <div style={{ width:38, height:38, borderRadius:8,
+        : <div style={{ width:36, height:36, borderRadius:8,
             background:"rgba(255,255,255,0.07)", display:"flex",
             alignItems:"center", justifyContent:"center",
-            fontSize:"0.65rem", fontWeight:"bold", color:"#aaa", fontFamily:FONT }}>
+            fontSize:"0.6rem", fontWeight:"bold", color:"#aaa", fontFamily:FONT }}>
             {short}
           </div>
       }
-      <div style={{ fontSize:"0.68rem", color:"#bbb", textAlign:"center",
+      <div style={{ fontSize:"0.65rem", color:"#bbb", textAlign:"center",
         fontFamily:FONT, lineHeight:1.2 }}>
         {name?.length > 14 ? short : name}
       </div>
+      {position && (
+        <div style={{ fontSize:"0.5rem", color:"rgba(255,255,255,0.3)", fontFamily:FONT }}>
+          {position}nd
+        </div>
+      )}
+      {form.length > 0 && (
+        <div style={{ display:"flex", gap:2, marginTop:2 }}>
+          {form.map((r, i) => (
+            <span key={i} style={{
+              display:"inline-block",
+              width:16, height:16, borderRadius:3,
+              background: formColors[r] || '#333',
+              color: '#000',
+              fontSize:'0.5rem',
+              fontWeight:'bold',
+              textAlign:'center',
+              lineHeight:'16px',
+              fontFamily:FONT
+            }}>
+              {r}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -83,7 +116,7 @@ function localDay(u){if(!u)return"";const d=new Date(u);return d.toLocaleDateStr
 function localTime(u,fb){if(!u)return fb||"";return new Date(u).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit",hour12:false});}
 function localDateKey(u,fb){if(!u)return fb||"";return new Date(u).toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long",year:"numeric"});}
 
-function MatchCard({ match, pick, result, onPick, isBanker, onToggleBanker }) {
+function MatchCard({ match, pick, result, onPick, isBanker, onToggleBanker, fixtures, results }) {
   const started = matchHasStarted(match, result);
   const isLive  = result?.state === "in";
   const isFT    = result?.completed;
@@ -117,13 +150,13 @@ function MatchCard({ match, pick, result, onPick, isBanker, onToggleBanker }) {
       borderRadius:10, marginBottom:"0.5rem", overflow:"hidden" }}>
 
       <div style={{ display:"flex", justifyContent:"space-between",
-        padding:"0.4rem 0.75rem",
+        padding:"0.3rem 0.75rem",
         borderBottom:"1px solid rgba(255,255,255,0.05)", alignItems:"center" }}>
         <div style={{display:"flex",alignItems:"center",gap:5}}>
-          <span style={{fontSize:"0.65rem",background:"rgba(0,255,133,0.1)",color:GREEN,padding:"2px 7px",borderRadius:4,fontFamily:FONT}}>GW{match.gw}</span>
-          {match.utcDate&&<span style={{fontSize:"0.63rem",color:"rgba(0,255,133,0.7)",fontFamily:FONT}}>{localDay(match.utcDate)}</span>}
+          <span style={{fontSize:"0.6rem",background:"rgba(0,255,133,0.1)",color:GREEN,padding:"2px 7px",borderRadius:4,fontFamily:FONT}}>GW{match.gw}</span>
+          {match.utcDate&&<span style={{fontSize:"0.6rem",color:"rgba(0,255,133,0.7)",fontFamily:FONT}}>{localDay(match.utcDate)}</span>}
         </div>
-        <span style={{ fontSize:"0.68rem", fontFamily:FONT,
+        <span style={{ fontSize:"0.65rem", fontFamily:FONT,
           color: isLive?"#22c55e":isFT?"#888":"#554060" }}>
           {isLive ? `🔴 ${result.homeScore}–${result.awayScore}`
            : isFT  ? `FT  ${result.homeScore}–${result.awayScore}`
@@ -131,26 +164,26 @@ function MatchCard({ match, pick, result, onPick, isBanker, onToggleBanker }) {
         </span>
       </div>
 
-      <div style={{ display:"flex", alignItems:"center", padding:"0.25rem 0.5rem" }}>
-        <TeamBlock name={match.home} short={match.homeShort} logo={match.homeLogo} pick={pick} side="home" />
-        <div style={{ color:"#2a0040", fontSize:"0.75rem", fontWeight:"bold",
+      <div style={{ display:"flex", alignItems:"center", padding:"0.15rem 0.5rem" }}>
+        <TeamBlock name={match.home} short={match.homeShort} logo={match.homeLogo} pick={pick} side="home" fixtures={fixtures} results={results} />
+        <div style={{ color:"#2a0040", fontSize:"0.7rem", fontWeight:"bold",
           padding:"0 0.4rem", fontFamily:FONT }}>VS</div>
-        <TeamBlock name={match.away} short={match.awayShort} logo={match.awayLogo} pick={pick} side="away" />
+        <TeamBlock name={match.away} short={match.awayShort} logo={match.awayLogo} pick={pick} side="away" fixtures={fixtures} results={results} />
       </div>
 
       {match.venue && (
-        <div style={{ textAlign:"center", fontSize:"0.58rem", color:"#2a0040",
-          padding:"0 0.75rem 0.25rem", fontFamily:FONT }}>{match.venue}</div>
+        <div style={{ textAlign:"center", fontSize:"0.55rem", color:"#2a0040",
+          padding:"0 0.75rem 0.15rem", fontFamily:FONT }}>{match.venue}</div>
       )}
 
-      <div style={{ display:"flex", gap:4, padding:"0.45rem 0.6rem 0.4rem",
+      <div style={{ display:"flex", gap:4, padding:"0.35rem 0.6rem 0.35rem",
         borderTop:"1px solid rgba(255,255,255,0.04)" }}>
         {opts.map(o => (
           <button key={o.v} onClick={() => !started && onPick(o.v)} style={{
-            flex:1, padding:"0.45rem 0.1rem", borderRadius:7,
+            flex:1, padding:"0.4rem 0.1rem", borderRadius:7,
             border:`1px solid ${pick===o.v?(isFT?(pick===actual?"#22c55e":"#ef4444"):GREEN):"rgba(255,255,255,0.07)"}`,
             background: bc(o.v), color: tc(o.v),
-            fontSize:"0.68rem", cursor: started&&!isFT?"not-allowed":"pointer",
+            fontSize:"0.65rem", cursor: started&&!isFT?"not-allowed":"pointer",
             fontWeight: pick===o.v?"bold":"normal",
             fontFamily:FONT, whiteSpace:"nowrap",
             overflow:"hidden", textOverflow:"ellipsis",
@@ -160,21 +193,20 @@ function MatchCard({ match, pick, result, onPick, isBanker, onToggleBanker }) {
         ))}
       </div>
 
-      {/* Banker toggle */}
       {!started && (
         <div style={{ 
           display: "flex", 
           justifyContent: "space-between", 
           alignItems: "center",
-          padding: "0.2rem 0.6rem 0.4rem",
+          padding: "0.15rem 0.6rem 0.3rem",
           borderTop: "1px solid rgba(255,255,255,0.04)"
         }}>
           <button 
             onClick={() => onToggleBanker(match.id)}
             style={{
-              fontSize: "0.6rem",
-              padding: "0.2rem 0.6rem",
-              borderRadius: 4,
+              fontSize:"0.55rem",
+              padding:"0.15rem 0.6rem",
+              borderRadius:4,
               border: `1px solid ${isBanker ? "#FFD700" : "rgba(255,255,255,0.1)"}`,
               background: isBanker ? "rgba(255,215,0,0.15)" : "transparent",
               color: isBanker ? "#FFD700" : "#555",
@@ -185,7 +217,7 @@ function MatchCard({ match, pick, result, onPick, isBanker, onToggleBanker }) {
             {isBanker ? "⭐ Banker (2x)" : "★ Set as Banker"}
           </button>
           {isBanker && (
-            <span style={{ fontSize: "0.55rem", color: "#FFD700" }}>
+            <span style={{ fontSize:"0.5rem", color:"#FFD700" }}>
               Double points!
             </span>
           )}
@@ -193,9 +225,62 @@ function MatchCard({ match, pick, result, onPick, isBanker, onToggleBanker }) {
       )}
 
       {started&&!isFT&&(
-        <div style={{textAlign:"center",fontSize:"0.58rem",color:"#2a0040",
-          paddingBottom:"0.35rem",fontFamily:FONT}}>Match in progress · picking locked</div>
+        <div style={{textAlign:"center",fontSize:"0.55rem",color:"#2a0040",
+          paddingBottom:"0.3rem",fontFamily:FONT}}>Match in progress · picking locked</div>
       )}
+    </div>
+  );
+}
+
+// -- Deadline countdown component --
+function DeadlineCountdown({ fixtures, gw }) {
+  const [timeLeft, setTimeLeft] = useState("");
+
+  useEffect(() => {
+    const deadline = getGWDeadline(fixtures, gw);
+    if (!deadline) { setTimeLeft("No deadline set"); return; }
+
+    const update = () => {
+      const now = new Date();
+      const diff = deadline - now;
+      
+      if (diff <= 0) {
+        setTimeLeft("🔓 Picks unlocked!");
+        return;
+      }
+      
+      const hrs = Math.floor(diff / 3600000);
+      const mins = Math.floor((diff % 3600000) / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      
+      if (hrs > 24) {
+        const days = Math.floor(hrs / 24);
+        setTimeLeft(`⏰ ${days}d ${hrs % 24}h until deadline`);
+      } else if (hrs > 0) {
+        setTimeLeft(`⏰ ${hrs}h ${mins}m until deadline`);
+      } else if (mins > 0) {
+        setTimeLeft(`⏰ ${mins}m ${secs}s until deadline`);
+      } else {
+        setTimeLeft(`⏰ ${secs}s until deadline`);
+      }
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [fixtures, gw]);
+
+  return (
+    <div style={{
+      textAlign:"center",
+      fontSize:"0.65rem",
+      color: timeLeft.includes("unlocked") ? GREEN : "#eab308",
+      padding:"0.2rem 0",
+      fontFamily:FONT,
+      fontWeight:"bold",
+      letterSpacing:"0.5px",
+    }}>
+      {timeLeft}
     </div>
   );
 }
@@ -231,8 +316,8 @@ export default function FixturesTab({ fixtures, picks, results, onPick, onRefres
 
       <div style={{ marginBottom:"0.75rem" }}>
         <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-          <span style={{ fontSize:"0.68rem", color:"#554060" }}>Season picks</span>
-          <span style={{ fontSize:"0.68rem", color:GREEN }}>{pickedCount}/{fixtures.length}</span>
+          <span style={{ fontSize:"0.65rem", color:"#554060" }}>Season picks</span>
+          <span style={{ fontSize:"0.65rem", color:GREEN }}>{pickedCount}/{fixtures.length}</span>
         </div>
         <div style={{ height:2, background:"rgba(255,255,255,0.05)", borderRadius:2 }}>
           <div style={{ width:`${(pickedCount/Math.max(fixtures.length,1))*100}%`,
@@ -240,18 +325,22 @@ export default function FixturesTab({ fixtures, picks, results, onPick, onRefres
         </div>
       </div>
 
-      <div style={{ overflowX:"auto", display:"flex", gap:5, paddingBottom:8, marginBottom:6 }}>
+      {/* GW Scroller */}
+      <div style={{ overflowX:"auto", display:"flex", gap:5, paddingBottom:8, marginBottom:4 }}>
         {allGws.map(g => (
           <button key={g} onClick={() => setActiveGw(g)} style={{
-            flexShrink:0, padding:"0.3rem 0.65rem", borderRadius:16, border:"1px solid",
+            flexShrink:0, padding:"0.25rem 0.6rem", borderRadius:16, border:"1px solid",
             borderColor: g===gw ? GREEN : "rgba(255,255,255,0.06)",
             background:  g===gw ? "rgba(0,255,133,0.12)" : "transparent",
             color:       g===gw ? GREEN : "#554060",
-            fontSize:"0.72rem", cursor:"pointer",
+            fontSize:"0.65rem", cursor:"pointer",
             fontWeight: g===gw?"bold":"normal", fontFamily:FONT,
           }}>GW{g}</button>
         ))}
       </div>
+
+      {/* Deadline Countdown */}
+      <DeadlineCountdown fixtures={fixtures} gw={gw} />
 
       {gwFixtures.length === 0
         ? <div style={{ textAlign:"center", padding:"2rem", color:"#3a2545" }}>
@@ -262,7 +351,7 @@ export default function FixturesTab({ fixtures, picks, results, onPick, onRefres
           gwFixtures.forEach(m=>{const k=localDateKey(m.utcDate,m.date);if(!days[k])days[k]=[];days[k].push(m);});
           return Object.entries(days).map(([day,ms])=>(
             <div key={day}>
-              <div style={{fontSize:"0.73rem",fontWeight:"bold",color:"rgba(0,255,133,0.75)",padding:"0.5rem 0 0.3rem",borderBottom:"1px solid rgba(0,255,133,0.12)",marginBottom:"0.4rem",fontFamily:FONT}}>{day}</div>
+              <div style={{fontSize:"0.7rem",fontWeight:"bold",color:"rgba(0,255,133,0.75)",padding:"0.4rem 0 0.2rem",borderBottom:"1px solid rgba(0,255,133,0.12)",marginBottom:"0.35rem",fontFamily:FONT}}>{day}</div>
               {ms.map(m=>(
                 <MatchCard 
                   key={m.id} 
@@ -272,6 +361,8 @@ export default function FixturesTab({ fixtures, picks, results, onPick, onRefres
                   onPick={pred => onPick(m.id, pred)}
                   isBanker={banker[m.gw] === m.id}
                   onToggleBanker={() => onToggleBanker(m.gw, m.id)}
+                  fixtures={fixtures}
+                  results={results}
                 />
               ))}
             </div>
