@@ -38,9 +38,7 @@ export function canonicalTeam(name) {
 }
 
 // -- Build result map from raw ESPN events ----------------------------
-// Returns { [fixtureId]: { homeScore, awayScore, completed, actual, state, status } }
 export function buildResults(events = [], fixtures = []) {
-  // Index ESPN events by ESPN event-ID and by sorted team-pair key
   const byId  = {};
   const byKey = {};
 
@@ -107,7 +105,7 @@ export function buildResults(events = [], fixtures = []) {
   return results;
 }
 
-// -- Score calculation (1 pt per correct pick, GW breakdown) ----------
+// -- Score calculation with Banker support --------------------------
 export function calcMemberScore(picks = {}, fixtures = [], results = {}) {
   let score = 0, picksMade = 0;
   const byGw = {};
@@ -127,6 +125,41 @@ export function calcMemberScore(picks = {}, fixtures = [], results = {}) {
   });
 
   return { score, picksMade, byGw };
+}
+
+// -- Score calculation with Banker bonus (2x points) ----------------
+export function calcMemberScoreWithBanker(picks = {}, banker = {}, fixtures = [], results = {}) {
+  let score = 0, picksMade = 0;
+  const byGw = {};
+  let correctStreak = 0;
+  let bestStreak = 0;
+
+  const sortedFixtures = [...fixtures].sort((a, b) => (a.gw || 0) - (b.gw || 0) || a.date.localeCompare(b.date));
+
+  sortedFixtures.forEach(f => {
+    const gw = f.gw ?? 0;
+    if (!byGw[gw]) byGw[gw] = { correct: 0, total: 0, pts: 0 };
+    byGw[gw].total++;
+    if (picks[f.id]) picksMade++;
+
+    const r = results[f.id];
+    const isCorrect = r?.actual && picks[f.id] === r.actual;
+    
+    if (isCorrect) {
+      const isBanker = banker[gw] === f.id;
+      const points = isBanker ? 2 : 1;
+      score += points;
+      byGw[gw].correct++;
+      byGw[gw].pts += points;
+      
+      correctStreak++;
+      if (correctStreak > bestStreak) bestStreak = correctStreak;
+    } else {
+      correctStreak = 0;
+    }
+  });
+
+  return { score, picksMade, byGw, currentStreak: correctStreak, bestStreak };
 }
 
 // -- Has a match started? (for hiding other players' picks) -----------

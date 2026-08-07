@@ -1,5 +1,8 @@
+// src/components/StandingsTab.jsx
 import { useState, useMemo } from "react";
-import { calcMemberScore } from "../utils/scoring";
+import { calcMemberScoreWithBanker } from "../utils/scoring";
+import HeadToHead from "./HeadToHead";
+
 const FONT = "'Times New Roman', Times, serif";
 const PURPLE = "#7c3aed";
 const MEDALS = ["🥇","🥈","🥉"];
@@ -19,15 +22,21 @@ function exportCSV(rows, totalGws) {
   a.download = "EPL_Standings.csv"; a.click();
 }
 
-export default function StandingsTab({ fixtures, members, username, results, status, leagueCode, onRefresh }) {
+export default function StandingsTab({ fixtures, members, username, results, status, leagueCode, onRefresh, banker = {} }) {
   const [copied,    setCopied]    = useState(false);
   const [refreshing,setRefreshing]= useState(false);
+  const [h2hTarget, setH2hTarget] = useState(null);
 
   const totalGws = useMemo(() => Math.max(0,...fixtures.map(f=>f.gw||0)), [fixtures]);
 
   const rows = useMemo(() =>
     Object.entries(members).map(([uname, data]) => {
-      const { score, picksMade, byGw } = calcMemberScore(data?.picks||{}, fixtures, results);
+      const { score, picksMade, byGw } = calcMemberScoreWithBanker(
+        data?.picks||{}, 
+        data?.banker||{}, 
+        fixtures, 
+        results
+      );
       return { username:uname, teamName:data?.teamName||uname, score, picksMade, byGw, isMe:uname===username };
     }).sort((a,b)=>b.score-a.score||b.picksMade-a.picksMade)
   , [members, fixtures, results, username]);
@@ -41,7 +50,6 @@ export default function StandingsTab({ fixtures, members, username, results, sta
   return (
     <div style={{ padding:"0.75rem", fontFamily:FONT }}>
 
-      {/* Invite code */}
       <div style={{ background:"rgba(124,58,237,0.06)", border:`1px solid ${PURPLE}33`,
         borderRadius:10, padding:"0.85rem", textAlign:"center", marginBottom:"0.75rem" }}>
         <div style={{ fontSize:"0.6rem", letterSpacing:"2px", color:PURPLE, fontWeight:"bold", marginBottom:6 }}>
@@ -57,7 +65,6 @@ export default function StandingsTab({ fixtures, members, username, results, sta
         </button>
       </div>
 
-      {/* Status bar */}
       <div style={{ display:"flex", gap:6, marginBottom:"0.85rem" }}>
         <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:5,
           background:"#161b22", border:"1px solid rgba(255,255,255,0.07)", borderRadius:8,
@@ -77,7 +84,6 @@ export default function StandingsTab({ fixtures, members, username, results, sta
         </button>
       </div>
 
-      {/* Leaderboard */}
       <div style={{ display:"grid", gap:6, marginBottom:"1.25rem" }}>
         {rows.map((row,i)=>(
           <div key={row.username} style={{
@@ -89,8 +95,17 @@ export default function StandingsTab({ fixtures, members, username, results, sta
             <span style={{ fontSize:i<3?"1.1rem":"0.82rem",color:"#777",minWidth:26,textAlign:"center" }}>
               {MEDALS[i]??i+1}
             </span>
-            <span style={{ flex:1, fontSize:"0.88rem",
-              fontWeight:row.isMe?"bold":"normal", color:row.isMe?PURPLE:"#ddd" }}>
+            <span 
+              style={{ 
+                flex:1, fontSize:"0.88rem",
+                fontWeight:row.isMe?"bold":"normal", 
+                color:row.isMe?PURPLE:"#ddd",
+                cursor: row.isMe ? "default" : "pointer",
+                textDecoration: row.isMe ? "none" : "underline",
+                textDecorationColor: "rgba(255,255,255,0.1)",
+              }}
+              onClick={() => !row.isMe && setH2hTarget(row.username)}
+            >
               {row.teamName}{row.isMe&&<span style={{color:"#444",fontWeight:"normal"}}> (You)</span>}
             </span>
             <span style={{ fontSize:"0.7rem", color:"#444" }}>{row.picksMade}/{fixtures.length}</span>
@@ -106,7 +121,6 @@ export default function StandingsTab({ fixtures, members, username, results, sta
         )}
       </div>
 
-      {/* My GW breakdown */}
       {me&&(
         <div>
           <div style={{fontSize:"0.72rem",fontWeight:"bold",color:PURPLE,marginBottom:"0.5rem",letterSpacing:"0.5px"}}>
@@ -114,7 +128,7 @@ export default function StandingsTab({ fixtures, members, username, results, sta
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:4,
             background:"#161b22", border:"1px solid rgba(255,255,255,0.06)", borderRadius:10, padding:"0.75rem" }}>
-            {Array.from({length:totalGws},(_,i)=>i+1).map(g=>{
+            {Array.from({length:Math.min(totalGws, 38)},(_,i)=>i+1).map(g=>{
               const b=me.byGw[g]||{correct:0,total:0};
               return (
                 <div key={g} style={{textAlign:"center"}}>
@@ -132,6 +146,16 @@ export default function StandingsTab({ fixtures, members, username, results, sta
             <span>{me.picksMade}/{fixtures.length} picks made</span>
           </div>
         </div>
+      )}
+
+      {h2hTarget && (
+        <HeadToHead 
+          fixtures={fixtures}
+          members={members}
+          username={username}
+          results={results}
+          onClose={() => setH2hTarget(null)}
+        />
       )}
     </div>
   );

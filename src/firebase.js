@@ -23,7 +23,7 @@ export async function createLeague(leagueCode, username, teamName) {
   if ((await getDoc(ref)).exists()) return { error: "League code already taken. Try another." };
   await setDoc(ref, { createdBy: username, createdAt: serverTimestamp() });
   await setDoc(doc(db, "leagues", leagueCode, "members", username), {
-    teamName: teamName || username, picks: {}, updatedAt: serverTimestamp(),
+    teamName: teamName || username, picks: {}, banker: {}, updatedAt: serverTimestamp(),
   });
   return { success: true };
 }
@@ -42,14 +42,14 @@ export async function joinLeague(leagueCode, username, teamName) {
   const existing = await getMember(leagueCode, username);
   if (existing) return { error: "Username already taken in this league. Choose another." };
   await setDoc(doc(db, "leagues", leagueCode, "members", username), {
-    teamName: teamName || username, picks: {}, updatedAt: serverTimestamp(),
+    teamName: teamName || username, picks: {}, banker: {}, updatedAt: serverTimestamp(),
   });
   return { success: true };
 }
 
 // ─── Picks ───────────────────────────────────────────────────────────
-export async function savePicks(leagueCode, username, picks, teamName) {
-  const data = { picks, updatedAt: serverTimestamp() };
+export async function savePicks(leagueCode, username, picks, teamName, banker = {}) {
+  const data = { picks, banker, updatedAt: serverTimestamp() };
   if (teamName) data.teamName = teamName;
   await setDoc(doc(db, "leagues", leagueCode, "members", username), data, { merge: true });
 }

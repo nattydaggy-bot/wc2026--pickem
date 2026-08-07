@@ -1,3 +1,4 @@
+// src/App.jsx
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { createLeague, joinLeague, getMember, leagueExists, savePicks, subscribeToLeague } from "./firebase";
 import { buildResults, calcMemberScore, seasonStatus } from "./utils/scoring";
@@ -5,9 +6,11 @@ import LeagueEntry  from "./components/LeagueEntry";
 import FixturesTab  from "./components/FixturesTab";
 import PicksTab     from "./components/PicksTab";
 import StandingsTab from "./components/StandingsTab";
+import WeekWinner   from "./components/WeekWinner";
+import ProfileStats from "./components/ProfileStats";
 
 const LAST  = "epl_session";
-const CACHE = "epl_fixtures_v6";  // bump to clear old cache
+const CACHE = "epl_fixtures_v6";
 const GREEN  = "#00ff85";
 const PURPLE = "#37003c";
 
@@ -18,6 +21,7 @@ export default function App() {
   const [username,   setUsername]   = useState("");
   const [teamName,   setTeamName]   = useState("");
   const [picks,      setPicks]      = useState({});
+  const [banker,     setBanker]     = useState({}); // { gw: fixtureId }
   const [members,    setMembers]    = useState({});
   const [fixtures,   setFixtures]   = useState([]);
   const [loadingFix, setLoadingFix] = useState(true);
@@ -32,6 +36,7 @@ export default function App() {
       if (s?.code && s?.username) {
         setLeagueCode(s.code); setUsername(s.username);
         setTeamName(s.teamName||s.username); setPicks(s.picks||{});
+        setBanker(s.banker||{});
         setView("app");
       }
     } catch {}
@@ -82,12 +87,11 @@ export default function App() {
 
   /* ── Derived ── */
   const results  = useMemo(()=>buildResults(espnEvents,fixtures),[espnEvents,fixtures]);
-  const merged   = useMemo(()=>({...members,[username]:{...(members[username]||{}),picks,teamName}}),[members,username,picks,teamName]);
-  const myStats  = useMemo(()=>calcMemberScore(picks,fixtures,results),[picks,fixtures,results]);
+  const merged   = useMemo(()=>({...members,[username]:{...(members[username]||{}),picks,banker,teamName}}),[members,username,picks,banker,teamName]);
   const status   = useMemo(()=>seasonStatus(results),[results]);
 
-  function saveSession(code,user,tName,p){
-    localStorage.setItem(LAST,JSON.stringify({code,username:user,teamName:tName,picks:p}));
+  function saveSession(code,user,tName,p,b={}){
+    localStorage.setItem(LAST,JSON.stringify({code,username:user,teamName:tName,picks:p,banker:b}));
   }
 
   async function handleCreate({username:u,teamName:t}){
@@ -98,20 +102,22 @@ export default function App() {
       do{code=Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join("");result=await createLeague(code,u,t);tries++;}
       while(result.error&&tries<6);
       if(result.error)return setAuthError(result.error);
-      setLeagueCode(code);setUsername(u);setTeamName(t||u);setPicks({});
-      saveSession(code,u,t||u,{});setView("app");
+      setLeagueCode(code);setUsername(u);setTeamName(t||u);setPicks({});setBanker({});
+      saveSession(code,u,t||u,{},{});setView("app");
     } finally{setAuthBusy(false);}
   }
+  
   async function handleJoin({code,username:u,teamName:t}){
     setAuthBusy(true);setAuthError("");
     try{
       if(!(await leagueExists(code)))return setAuthError("League not found.");
       const r=await joinLeague(code,u,t);
       if(r.error)return setAuthError(r.error);
-      setLeagueCode(code);setUsername(u);setTeamName(t||u);setPicks({});
-      saveSession(code,u,t||u,{});setView("app");
+      setLeagueCode(code);setUsername(u);setTeamName(t||u);setPicks({});setBanker({});
+      saveSession(code,u,t||u,{},{});setView("app");
     }finally{setAuthBusy(false);}
   }
+  
   async function handleLogin({code:c,username:u}){
     setAuthBusy(true);setAuthError("");
     try{
@@ -121,18 +127,35 @@ export default function App() {
       const member=await getMember(savedCode,u);
       if(!member)return setAuthError("Username not found. Use Join to create your account.");
       const p=member.picks||{};
-      setLeagueCode(savedCode);setUsername(u);setTeamName(member.teamName||u);setPicks(p);
-      saveSession(savedCode,u,member.teamName||u,p);setView("app");
+      const b=member.banker||{};
+      setLeagueCode(savedCode);setUsername(u);setTeamName(member.teamName||u);setPicks(p);setBanker(b);
+      saveSession(savedCode,u,member.teamName||u,p,b);setView("app");
     }finally{setAuthBusy(false);}
   }
+  
   async function handlePick(matchId,pred){
     const updated={...picks,[matchId]:pred};
-    setPicks(updated);saveSession(leagueCode,username,teamName,updated);
-    await savePicks(leagueCode,username,updated,teamName);
+    setPicks(updated);
+    saveSession(leagueCode,username,teamName,updated,banker);
+    await savePicks(leagueCode,username,updated,teamName,banker);
   }
+
+  async function handleToggleBanker(gw, matchId){
+    const current = banker[gw];
+    const updated = { ...banker };
+    if (current === matchId) {
+      delete updated[gw]; // Unset banker
+    } else {
+      updated[gw] = matchId; // Set this match as banker
+    }
+    setBanker(updated);
+    saveSession(leagueCode,username,teamName,picks,updated);
+    await savePicks(leagueCode,username,picks,teamName,updated);
+  }
+
   function handleLogout(){
     localStorage.removeItem(LAST);
-    setView("entry");setLeagueCode("");setUsername("");setTeamName("");setPicks({});setMembers({});
+    setView("entry");setLeagueCode("");setUsername("");setTeamName("");setPicks({});setBanker({});setMembers({});
   }
 
   if(view==="entry") return (
@@ -151,7 +174,6 @@ export default function App() {
   return (
     <div style={{minHeight:"100vh",color:"#fff",display:"flex",flexDirection:"column",maxWidth:520,margin:"0 auto",position:"relative"}}>
 
-      {/* Header */}
       <header style={{background:PURPLE,borderBottom:`2px solid ${GREEN}`,
         padding:"0.55rem 0.85rem",display:"flex",justifyContent:"space-between",
         alignItems:"center",position:"sticky",top:0,zIndex:10}}>
@@ -163,7 +185,14 @@ export default function App() {
         </div>
         <div style={{textAlign:"right"}}>
           <div style={{fontSize:"0.95rem",fontWeight:"bold",color:GREEN}}>
-            {myStats.score}<span style={{color:"rgba(255,255,255,0.3)",fontSize:"0.7rem"}}>/{fixtures.length}</span>
+            {Object.values(members).reduce((sum,m) => {
+              const s = Object.keys(m?.picks||{}).filter(id => {
+                const r = results[id];
+                return r?.actual && m.picks?.[id] === r.actual;
+              }).length;
+              return sum + (m?.username === username ? s : 0);
+            }, 0)}
+            <span style={{color:"rgba(255,255,255,0.3)",fontSize:"0.7rem"}}>/{fixtures.length}</span>
           </div>
           <div style={{fontSize:"0.6rem",color:stColor}}>{status.label}</div>
           <button onClick={handleLogout} style={{fontSize:"0.6rem",color:"rgba(255,255,255,0.3)",
@@ -173,7 +202,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* Content */}
       <main style={{flex:1,overflowY:"auto",paddingBottom:72}}>
         {loadingFix
           ? <div style={{textAlign:"center",padding:"5rem 1rem",color:"rgba(255,255,255,0.3)"}}>
@@ -181,14 +209,15 @@ export default function App() {
               Loading Premier League fixtures…
             </div>
           : <>
-              {activeTab==="fixtures"  && <FixturesTab  fixtures={fixtures} picks={picks} results={results} onPick={handlePick}/>}
+              <WeekWinner fixtures={fixtures} members={members} results={results} banker={banker} />
+              <ProfileStats fixtures={fixtures} picks={picks} results={results} username={username} teamName={teamName} />
+              {activeTab==="fixtures"  && <FixturesTab  fixtures={fixtures} picks={picks} results={results} onPick={handlePick} banker={banker} onToggleBanker={handleToggleBanker} onRefreshFixtures={() => { localStorage.removeItem(CACHE); window.location.reload(); }} />}
               {activeTab==="picks"     && <PicksTab     fixtures={fixtures} members={merged} username={username} results={results}/>}
-              {activeTab==="standings" && <StandingsTab fixtures={fixtures} members={merged} username={username} results={results} status={status} leagueCode={leagueCode} onRefresh={refreshScores}/>}
+              {activeTab==="standings" && <StandingsTab fixtures={fixtures} members={merged} username={username} results={results} status={status} leagueCode={leagueCode} onRefresh={refreshScores} banker={banker} />}
             </>
         }
       </main>
 
-      {/* Bottom nav */}
       <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",
         width:"100%",maxWidth:520,background:PURPLE,
         borderTop:`2px solid ${GREEN}`,display:"flex",zIndex:20}}>

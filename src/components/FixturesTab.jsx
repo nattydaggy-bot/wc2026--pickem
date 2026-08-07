@@ -1,3 +1,4 @@
+// src/components/FixturesTab.jsx
 import { useState, useMemo } from "react";
 import { matchHasStarted } from "../utils/scoring";
 
@@ -5,9 +6,8 @@ const FONT   = "'Times New Roman', Times, serif";
 const PURPLE = "#37003c";
 const GREEN  = "#00ff85";
 
-// -- Countdown to season start ----------------------------------------
 function SeasonCountdown({ onRefresh }) {
-  const SEASON_START = new Date("2026-08-14T19:00:00Z"); // approx GW1 kickoff
+  const SEASON_START = new Date("2026-08-14T19:00:00Z");
   const now  = new Date();
   const diff = SEASON_START - now;
   const days = Math.floor(diff / 86400000);
@@ -54,7 +54,6 @@ function SeasonCountdown({ onRefresh }) {
   );
 }
 
-// -- Team badge -------------------------------------------------------
 function TeamBlock({ name, short, logo, pick, side }) {
   const sel = pick === side;
   return (
@@ -80,12 +79,11 @@ function TeamBlock({ name, short, logo, pick, side }) {
   );
 }
 
-// -- Single match card ------------------------------------------------
 function localDay(u){if(!u)return"";const d=new Date(u);return d.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"});}
 function localTime(u,fb){if(!u)return fb||"";return new Date(u).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit",hour12:false});}
 function localDateKey(u,fb){if(!u)return fb||"";return new Date(u).toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long",year:"numeric"});}
 
-function MatchCard({ match, pick, result, onPick }) {
+function MatchCard({ match, pick, result, onPick, isBanker, onToggleBanker }) {
   const started = matchHasStarted(match, result);
   const isLive  = result?.state === "in";
   const isFT    = result?.completed;
@@ -145,7 +143,7 @@ function MatchCard({ match, pick, result, onPick }) {
           padding:"0 0.75rem 0.25rem", fontFamily:FONT }}>{match.venue}</div>
       )}
 
-      <div style={{ display:"flex", gap:4, padding:"0.45rem 0.6rem 0.55rem",
+      <div style={{ display:"flex", gap:4, padding:"0.45rem 0.6rem 0.4rem",
         borderTop:"1px solid rgba(255,255,255,0.04)" }}>
         {opts.map(o => (
           <button key={o.v} onClick={() => !started && onPick(o.v)} style={{
@@ -161,6 +159,39 @@ function MatchCard({ match, pick, result, onPick }) {
           </button>
         ))}
       </div>
+
+      {/* Banker toggle */}
+      {!started && (
+        <div style={{ 
+          display: "flex", 
+          justifyContent: "space-between", 
+          alignItems: "center",
+          padding: "0.2rem 0.6rem 0.4rem",
+          borderTop: "1px solid rgba(255,255,255,0.04)"
+        }}>
+          <button 
+            onClick={() => onToggleBanker(match.id)}
+            style={{
+              fontSize: "0.6rem",
+              padding: "0.2rem 0.6rem",
+              borderRadius: 4,
+              border: `1px solid ${isBanker ? "#FFD700" : "rgba(255,255,255,0.1)"}`,
+              background: isBanker ? "rgba(255,215,0,0.15)" : "transparent",
+              color: isBanker ? "#FFD700" : "#555",
+              cursor: "pointer",
+              fontFamily: FONT,
+            }}
+          >
+            {isBanker ? "⭐ Banker (2x)" : "★ Set as Banker"}
+          </button>
+          {isBanker && (
+            <span style={{ fontSize: "0.55rem", color: "#FFD700" }}>
+              Double points!
+            </span>
+          )}
+        </div>
+      )}
+
       {started&&!isFT&&(
         <div style={{textAlign:"center",fontSize:"0.58rem",color:"#2a0040",
           paddingBottom:"0.35rem",fontFamily:FONT}}>Match in progress · picking locked</div>
@@ -169,8 +200,7 @@ function MatchCard({ match, pick, result, onPick }) {
   );
 }
 
-// -- Main component ---------------------------------------------------
-export default function FixturesTab({ fixtures, picks, results, onPick, onRefreshFixtures }) {
+export default function FixturesTab({ fixtures, picks, results, onPick, onRefreshFixtures, banker = {}, onToggleBanker }) {
   const allGws = useMemo(() =>
     [...new Set(fixtures.map(f=>f.gw).filter(g=>g!=null))].sort((a,b)=>a-b),
   [fixtures]);
@@ -192,7 +222,6 @@ export default function FixturesTab({ fixtures, picks, results, onPick, onRefres
 
   const pickedCount = Object.keys(picks).length;
 
-  // No fixtures yet — show countdown
   if (fixtures.length === 0) {
     return <SeasonCountdown onRefresh={onRefreshFixtures} />;
   }
@@ -200,7 +229,6 @@ export default function FixturesTab({ fixtures, picks, results, onPick, onRefres
   return (
     <div style={{ padding:"0.75rem", fontFamily:FONT }}>
 
-      {/* Progress */}
       <div style={{ marginBottom:"0.75rem" }}>
         <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
           <span style={{ fontSize:"0.68rem", color:"#554060" }}>Season picks</span>
@@ -212,7 +240,6 @@ export default function FixturesTab({ fixtures, picks, results, onPick, onRefres
         </div>
       </div>
 
-      {/* GW scroller */}
       <div style={{ overflowX:"auto", display:"flex", gap:5, paddingBottom:8, marginBottom:6 }}>
         {allGws.map(g => (
           <button key={g} onClick={() => setActiveGw(g)} style={{
@@ -226,7 +253,6 @@ export default function FixturesTab({ fixtures, picks, results, onPick, onRefres
         ))}
       </div>
 
-      {/* Match list */}
       {gwFixtures.length === 0
         ? <div style={{ textAlign:"center", padding:"2rem", color:"#3a2545" }}>
             No fixtures for GW{gw}
@@ -237,7 +263,17 @@ export default function FixturesTab({ fixtures, picks, results, onPick, onRefres
           return Object.entries(days).map(([day,ms])=>(
             <div key={day}>
               <div style={{fontSize:"0.73rem",fontWeight:"bold",color:"rgba(0,255,133,0.75)",padding:"0.5rem 0 0.3rem",borderBottom:"1px solid rgba(0,255,133,0.12)",marginBottom:"0.4rem",fontFamily:FONT}}>{day}</div>
-              {ms.map(m=><MatchCard key={m.id} match={m} pick={picks[m.id]} result={results[m.id]} onPick={pred=>onPick(m.id,pred)}/>)}
+              {ms.map(m=>(
+                <MatchCard 
+                  key={m.id} 
+                  match={m} 
+                  pick={picks[m.id]} 
+                  result={results[m.id]} 
+                  onPick={pred => onPick(m.id, pred)}
+                  isBanker={banker[m.gw] === m.id}
+                  onToggleBanker={() => onToggleBanker(m.gw, m.id)}
+                />
+              ))}
             </div>
           ));
         })()
