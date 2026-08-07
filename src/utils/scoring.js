@@ -95,8 +95,7 @@ export function buildResults(events = [], fixtures = []) {
         actual = homeScore === awayScore ? "draw" : homeScore > awayScore ? "home" : "away";
     }
 
-    results[f.id] = { homeScore, awayScore, completed: ev.completed,
-      state: ev.state, status: ev.status, actual };
+    results[f.id] = { homeScore, awayScore, completed: ev.completed, state: ev.state, status: ev.status, actual };
   });
 
   return results;
@@ -146,7 +145,6 @@ export function calcMemberScoreWithBanker(picks = {}, banker = {}, fixtures = []
       score += points;
       byGw[gw].correct++;
       byGw[gw].pts += points;
-
       correctStreak++;
       if (correctStreak > bestStreak) bestStreak = correctStreak;
     } else {
