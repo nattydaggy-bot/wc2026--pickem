@@ -102,7 +102,8 @@ export function buildResults(events = [], fixtures = []) {
 }
 
 export function calcMemberScore(picks = {}, fixtures = [], results = {}) {
-  let score = 0, picksMade = 0;
+  let score = 0;
+  let picksMade = 0;
   const byGw = {};
 
   fixtures.forEach(f => {
@@ -123,7 +124,8 @@ export function calcMemberScore(picks = {}, fixtures = [], results = {}) {
 }
 
 export function calcMemberScoreWithBanker(picks = {}, banker = {}, fixtures = [], results = {}) {
-  let score = 0, picksMade = 0;
+  let score = 0;
+  let picksMade = 0;
   const byGw = {};
   let correctStreak = 0;
   let bestStreak = 0;
