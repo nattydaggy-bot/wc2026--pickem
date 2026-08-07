@@ -39,8 +39,8 @@ export default function ProfileStats({ fixtures, picks, results, username, teamN
     const drawAcc = byOutcome.draw > 0 ? (correctByOutcome.draw / byOutcome.draw) * 100 : 0;
     const awayAcc = byOutcome.away > 0 ? (correctByOutcome.away / byOutcome.away) * 100 : 0;
 
-    return { 
-      accuracy, correct, total, 
+    return {
+      accuracy, correct, total,
       homeAcc, drawAcc, awayAcc,
       currentStreak: streak,
       bestStreak,
@@ -49,10 +49,10 @@ export default function ProfileStats({ fixtures, picks, results, username, teamN
 
   if (stats.total === 0) {
     return (
-      <div style={{ 
-        background: "rgba(124,58,237,0.05)", 
+      <div style={{
+        background: "rgba(124,58,237,0.05)",
         border: `1px solid ${PURPLE}33`,
-        borderRadius: 10, 
+        borderRadius: 10,
         padding: "0.85rem 1rem",
         marginBottom: "0.75rem",
         fontFamily: FONT,
@@ -66,15 +66,21 @@ export default function ProfileStats({ fixtures, picks, results, username, teamN
   }
 
   return (
-    <div style={{ 
-      background: "rgba(124,58,237,0.05)", 
+    <div style={{
+      background: "rgba(124,58,237,0.05)",
       border: `1px solid ${PURPLE}33`,
-      borderRadius: 10, 
+      borderRadius: 10,
       padding: "0.85rem 1rem",
       marginBottom: "0.75rem",
       fontFamily: FONT,
     }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: "0.5rem"
+      }}>
         <div>
           <div style={{ fontSize: "0.6rem", color: "#555", letterSpacing: "1px" }}>
             {teamName || username} · Accuracy
@@ -107,7 +113,11 @@ export default function ProfileStats({ fixtures, picks, results, username, teamN
               {stats.awayAcc.toFixed(0)}%
             </div>
           </div>
-          <div style={{ textAlign: "center", borderLeft: "1px solid rgba(255,255,255,0.06)", paddingLeft: "0.75rem" }}>
+          <div style={{
+            textAlign: "center",
+            borderLeft: "1px solid rgba(255,255,255,0.06)",
+            paddingLeft: "0.75rem"
+          }}>
             <div style={{ color: "#555" }}>🔥 Streak</div>
             <div style={{ color: stats.currentStreak >= 3 ? GREEN : "#555" }}>
               {stats.currentStreak >= 3 ? `🔥 ${stats.currentStreak}` : stats.currentStreak}

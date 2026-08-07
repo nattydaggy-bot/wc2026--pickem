@@ -7,7 +7,7 @@ const GOLD = "#FFD700";
 
 export default function WeekWinner({ fixtures, members, results, banker = {} }) {
   const [currentGw, setCurrentGw] = useState(null);
-  
+
   const activeGw = useMemo(() => {
     const now = new Date();
     let latest = fixtures[fixtures.length - 1]?.gw || 1;
@@ -23,12 +23,12 @@ export default function WeekWinner({ fixtures, members, results, banker = {} }) 
   const gwScores = useMemo(() => {
     const scores = {};
     const gw = currentGw || activeGw;
-    
+
     Object.entries(members).forEach(([uname, data]) => {
       const { byGw } = calcMemberScoreWithBanker(
-        data?.picks || {}, 
-        data?.banker || {}, 
-        fixtures, 
+        data?.picks || {},
+        data?.banker || {},
+        fixtures,
         results
       );
       scores[uname] = {
@@ -53,7 +53,6 @@ export default function WeekWinner({ fixtures, members, results, banker = {} }) 
     return Array.from(gws).sort((a, b) => a - b);
   }, [fixtures]);
 
-  // Calculate if GW is complete (all matches finished)
   const isGWComplete = useMemo(() => {
     const gw = currentGw || activeGw;
     const gwFixtures = fixtures.filter(f => f.gw === gw);
@@ -62,15 +61,21 @@ export default function WeekWinner({ fixtures, members, results, banker = {} }) 
   }, [fixtures, results, currentGw, activeGw]);
 
   return (
-    <div style={{ 
-      background: "rgba(255,215,0,0.05)", 
+    <div style={{
+      background: "rgba(255,215,0,0.05)",
       border: `1px solid ${GOLD}33`,
-      borderRadius: 12, 
+      borderRadius: 12,
       padding: "0.7rem 0.85rem",
       marginBottom: "0.65rem",
       fontFamily: FONT,
     }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.4rem" }}>
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: "0.4rem"
+      }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <div>
             <div style={{ fontSize: "0.55rem", color: GOLD, letterSpacing: "2px", fontWeight: "bold" }}>
@@ -114,8 +119,8 @@ export default function WeekWinner({ fixtures, members, results, banker = {} }) 
           </select>
           <div style={{ display: "flex", gap: 2 }}>
             {sorted.slice(0, 3).map(([uname, data], i) => (
-              <div key={uname} style={{ 
-                fontSize: "0.5rem", 
+              <div key={uname} style={{
+                fontSize: "0.5rem",
                 color: i === 0 ? GOLD : "#555",
                 background: "rgba(255,255,255,0.04)",
                 padding: "1px 5px",

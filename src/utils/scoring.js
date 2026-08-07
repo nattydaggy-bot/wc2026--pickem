@@ -1,35 +1,34 @@
 // src/utils/scoring.js — EPL Pick'em scoring engine
 
 export const POINTS_PER_CORRECT = 1;
-export const TOTAL_GAMEWEEKS    = 38;
-export const TOTAL_MATCHES      = 380;
+export const TOTAL_GAMEWEEKS = 38;
+export const TOTAL_MATCHES = 380;
 
-// -- Team-name normalisation for ESPN matching -------------------------
 export function normalizeTeam(name = "") {
   return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
 }
 
 const ALIASES = {
-  "man city":                "manchester city",
-  "man utd":                 "manchester united",
-  "man united":              "manchester united",
-  "spurs":                   "tottenham hotspur",
-  "tottenham":               "tottenham hotspur",
-  "brighton":                "brighton hove albion",
-  "brighton & hove albion":  "brighton hove albion",
-  "brighton and hove albion":"brighton hove albion",
-  "wolves":                  "wolverhampton wanderers",
-  "west ham":                "west ham united",
-  "newcastle":               "newcastle united",
-  "nottm forest":            "nottingham forest",
-  "nott'm forest":           "nottingham forest",
-  "nffc":                    "nottingham forest",
-  "leicester":               "leicester city",
-  "ipswich":                 "ipswich town",
-  "sunderland afc":          "sunderland",
-  "leeds":                   "leeds united",
-  "burnley fc":              "burnley",
+  "man city": "manchester city",
+  "man utd": "manchester united",
+  "man united": "manchester united",
+  "spurs": "tottenham hotspur",
+  "tottenham": "tottenham hotspur",
+  "brighton": "brighton hove albion",
+  "brighton & hove albion": "brighton hove albion",
+  "brighton and hove albion": "brighton hove albion",
+  "wolves": "wolverhampton wanderers",
+  "west ham": "west ham united",
+  "newcastle": "newcastle united",
+  "nottm forest": "nottingham forest",
+  "nott'm forest": "nottingham forest",
+  "nffc": "nottingham forest",
+  "leicester": "leicester city",
+  "ipswich": "ipswich town",
+  "sunderland afc": "sunderland",
+  "leeds": "leeds united",
+  "burnley fc": "burnley",
 };
 
 export function canonicalTeam(name) {
@@ -37,9 +36,8 @@ export function canonicalTeam(name) {
   return ALIASES[n] || n;
 }
 
-// -- Build result map from raw ESPN events ----------------------------
 export function buildResults(events = [], fixtures = []) {
-  const byId  = {};
+  const byId = {};
   const byKey = {};
 
   events.forEach(ev => {
@@ -51,19 +49,17 @@ export function buildResults(events = [], fixtures = []) {
 
     const hName = h.team?.displayName || h.team?.name || "";
     const aName = a.team?.displayName || a.team?.name || "";
-    const hScore = h.score != null ? parseInt(h.score, 10) : null;
-    const aScore = a.score != null ? parseInt(a.score, 10) : null;
 
     const entry = {
-      homeScore:  hScore,
-      awayScore:  aScore,
+      homeScore: h.score != null ? parseInt(h.score, 10) : null,
+      awayScore: a.score != null ? parseInt(a.score, 10) : null,
       homeWinner: h.winner === true,
       awayWinner: a.winner === true,
-      completed:  comp.status?.type?.completed || false,
-      state:      comp.status?.type?.state     || "pre",
-      status:     comp.status?.type?.shortDetail || "",
-      espnHome:   hName,
-      espnAway:   aName,
+      completed: comp.status?.type?.completed || false,
+      state: comp.status?.type?.state || "pre",
+      status: comp.status?.type?.shortDetail || "",
+      espnHome: hName,
+      espnAway: aName,
     };
 
     byId[ev.id] = entry;
@@ -73,41 +69,39 @@ export function buildResults(events = [], fixtures = []) {
 
   const results = {};
   fixtures.forEach(f => {
-    let ev      = f.espnId ? byId[f.espnId] : null;
+    let ev = f.espnId ? byId[f.espnId] : null;
     let flipped = false;
 
     if (!ev && f.home && f.away) {
-      const key    = [canonicalTeam(f.home), canonicalTeam(f.away)].sort().join("|");
+      const key = [canonicalTeam(f.home), canonicalTeam(f.away)].sort().join("|");
       const paired = byKey[key];
       if (paired) {
-        ev      = paired;
+        ev = paired;
         flipped = canonicalTeam(paired.espnHome) !== canonicalTeam(f.home);
       }
     }
     if (!ev) return;
 
-    const homeScore  = flipped ? ev.awayScore  : ev.homeScore;
-    const awayScore  = flipped ? ev.homeScore  : ev.awayScore;
+    const homeScore = flipped ? ev.awayScore : ev.homeScore;
+    const awayScore = flipped ? ev.homeScore : ev.awayScore;
     const homeWinner = flipped ? ev.awayWinner : ev.homeWinner;
     const awayWinner = flipped ? ev.homeWinner : ev.awayWinner;
 
     let actual = null;
     if (ev.completed) {
-      if (homeWinner)      actual = "home";
+      if (homeWinner) actual = "home";
       else if (awayWinner) actual = "away";
       else if (homeScore != null && awayScore != null)
-        actual = homeScore === awayScore ? "draw"
-               : homeScore > awayScore   ? "home" : "away";
+        actual = homeScore === awayScore ? "draw" : homeScore > awayScore ? "home" : "away";
     }
 
     results[f.id] = { homeScore, awayScore, completed: ev.completed,
-                      state: ev.state, status: ev.status, actual };
+      state: ev.state, status: ev.status, actual };
   });
 
   return results;
 }
 
-// -- Score calculation with Banker support --------------------------
 export function calcMemberScore(picks = {}, fixtures = [], results = {}) {
   let score = 0, picksMade = 0;
   const byGw = {};
@@ -129,7 +123,6 @@ export function calcMemberScore(picks = {}, fixtures = [], results = {}) {
   return { score, picksMade, byGw };
 }
 
-// -- Score calculation with Banker bonus (2x points) ----------------
 export function calcMemberScoreWithBanker(picks = {}, banker = {}, fixtures = [], results = {}) {
   let score = 0, picksMade = 0;
   const byGw = {};
@@ -146,14 +139,14 @@ export function calcMemberScoreWithBanker(picks = {}, banker = {}, fixtures = []
 
     const r = results[f.id];
     const isCorrect = r?.actual && picks[f.id] === r.actual;
-    
+
     if (isCorrect) {
       const isBanker = banker[gw] === f.id;
       const points = isBanker ? 2 : 1;
       score += points;
       byGw[gw].correct++;
       byGw[gw].pts += points;
-      
+
       correctStreak++;
       if (correctStreak > bestStreak) bestStreak = correctStreak;
     } else {
@@ -164,122 +157,20 @@ export function calcMemberScoreWithBanker(picks = {}, banker = {}, fixtures = []
   return { score, picksMade, byGw, currentStreak: correctStreak, bestStreak };
 }
 
-// -- Has a match started? (for hiding other players' picks) -----------
 export function matchHasStarted(fixture, result) {
   if (result?.state === "in" || result?.completed) return true;
   if (!fixture.date || !fixture.time) return false;
   const [h, m] = fixture.time.split(":").map(Number);
-  const utcH   = h + 4; // ET = UTC-4 (summer DST)
-  const base   = new Date(fixture.date + "T00:00:00Z").getTime();
+  const utcH = h + 4;
+  const base = new Date(fixture.date + "T00:00:00Z").getTime();
   const kickoff = base + (utcH < 24 ? utcH : utcH - 24) * 3600000 + m * 60000;
   return Date.now() >= kickoff;
 }
 
-// -- Season status for header badge -----------------------------------
 export function seasonStatus(results = {}) {
   const completed = Object.values(results).filter(r => r.completed).length;
-  const live      = Object.values(results).filter(r => r.state === "in").length;
-  if (live > 0)          return { label: "Live",        completed, live };
-  if (completed === 0)   return { label: "Pre-Season",  completed, live };
-  if (completed < 380)   return { label: "In Progress", completed, live };
-  return                        { label: "Season Done", completed, live };
-}
-
-// -- Calculate team form guide (last 5 matches) ----------------------
-export function calculateTeamForm(teamName, fixtures, results) {
-  const form = [];
-  const teamCanon = canonicalTeam(teamName);
-  
-  // Get all completed matches involving this team
-  const matches = fixtures.filter(f => {
-    const homeCanon = canonicalTeam(f.home);
-    const awayCanon = canonicalTeam(f.away);
-    return (homeCanon === teamCanon || awayCanon === teamCanon) && results[f.id]?.completed;
-  });
-
-  // Sort by date (most recent first)
-  matches.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-  // Get last 5 matches
-  const last5 = matches.slice(0, 5);
-
-  last5.forEach(f => {
-    const r = results[f.id];
-    const homeCanon = canonicalTeam(f.home);
-    const isHome = homeCanon === teamCanon;
-    const homeScore = r.homeScore;
-    const awayScore = r.awayScore;
-    
-    let result = 'D'; // Default draw
-    if (homeScore !== null && awayScore !== null) {
-      if (isHome) {
-        result = homeScore > awayScore ? 'W' : homeScore < awayScore ? 'L' : 'D';
-      } else {
-        result = awayScore > homeScore ? 'W' : awayScore < homeScore ? 'L' : 'D';
-      }
-    }
-    form.push(result);
-  });
-
-  return form;
-}
-
-// -- Get current league position (mock - would use real API) ---------
-export function getLeaguePosition(teamName, fixtures, results) {
-  // This is a simplified version. In production, you'd use a real standings API
-  const teams = {};
-  
-  // Get all unique teams
-  fixtures.forEach(f => {
-    const home = canonicalTeam(f.home);
-    const away = canonicalTeam(f.away);
-    if (!teams[home]) teams[home] = { name: home, played: 0, won: 0, drawn: 0, lost: 0, pts: 0 };
-    if (!teams[away]) teams[away] = { name: away, played: 0, won: 0, drawn: 0, lost: 0, pts: 0 };
-  });
-
-  // Calculate points
-  fixtures.forEach(f => {
-    const r = results[f.id];
-    if (!r?.completed) return;
-    const home = canonicalTeam(f.home);
-    const away = canonicalTeam(f.away);
-    const homeScore = r.homeScore;
-    const awayScore = r.awayScore;
-    
-    if (homeScore !== null && awayScore !== null) {
-      teams[home].played++;
-      teams[away].played++;
-      
-      if (homeScore > awayScore) {
-        teams[home].won++; teams[home].pts += 3;
-        teams[away].lost++;
-      } else if (homeScore < awayScore) {
-        teams[away].won++; teams[away].pts += 3;
-        teams[home].lost++;
-      } else {
-        teams[home].drawn++; teams[home].pts += 1;
-        teams[away].drawn++; teams[away].pts += 1;
-      }
-    }
-  });
-
-  // Sort by points, then goal difference (simplified)
-  const sorted = Object.values(teams).sort((a, b) => b.pts - a.pts);
-  const pos = sorted.findIndex(t => t.name === canonicalTeam(teamName)) + 1;
-  return pos > 0 ? pos : null;
-}
-
-// -- Get deadline for a gameweek ------------------------------------
-export function getGWDeadline(fixtures, gw) {
-  const gwFixtures = fixtures.filter(f => f.gw === gw);
-  if (gwFixtures.length === 0) return null;
-  
-  // Find the earliest kickoff in this GW
-  const earliest = gwFixtures.reduce((earliest, f) => {
-    if (!f.utcDate) return earliest;
-    const d = new Date(f.utcDate);
-    return d < earliest ? d : earliest;
-  }, new Date(gwFixtures[0]?.utcDate || Date.now() + 86400000));
-  
-  return earliest;
-}
+  const live = Object.values(results).filter(r => r.state === "in").length;
+  if (live > 0) return { label: "Live", completed, live };
+  if (completed === 0) return { label: "Pre-Season", completed, live };
+  if (completed < 380) return { label: "In Progress", completed, live };
+ 

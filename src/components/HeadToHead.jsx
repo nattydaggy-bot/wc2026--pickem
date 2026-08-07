@@ -8,32 +8,32 @@ const GREEN = "#00ff85";
 
 export default function HeadToHead({ fixtures, members, username, results, onClose }) {
   const [targetUser, setTargetUser] = useState("");
-  
+
   const otherPlayers = Object.keys(members).filter(u => u !== username);
-  
+
   const comparison = useMemo(() => {
     if (!targetUser || !members[targetUser]) return null;
-    
+
     const myPicks = members[username]?.picks || {};
     const theirPicks = members[targetUser]?.picks || {};
     const myName = members[username]?.teamName || username;
     const theirName = members[targetUser]?.teamName || targetUser;
     const myBanker = members[username]?.banker || {};
     const theirBanker = members[targetUser]?.banker || {};
-    
+
     const matchups = fixtures.map(f => {
       const r = results[f.id];
       const myPick = myPicks[f.id];
       const theirPick = theirPicks[f.id];
       const started = matchHasStarted(f, r);
       const isFT = r?.completed;
-      
+
       let myCorrect = false;
       let theirCorrect = false;
       let result = null;
       let myPoints = 0;
       let theirPoints = 0;
-      
+
       if (isFT && r?.actual) {
         myCorrect = myPick === r.actual;
         theirCorrect = theirPick === r.actual;
@@ -43,7 +43,7 @@ export default function HeadToHead({ fixtures, members, username, results, onClo
         else if (!myCorrect && theirCorrect) result = "loss";
         else if (myCorrect && theirCorrect) result = "draw";
       }
-      
+
       return {
         f,
         myPick,
@@ -58,7 +58,7 @@ export default function HeadToHead({ fixtures, members, username, results, onClo
         theirPoints,
       };
     });
-    
+
     const totals = {
       wins: matchups.filter(m => m.result === "win").length,
       losses: matchups.filter(m => m.result === "loss").length,
@@ -67,7 +67,7 @@ export default function HeadToHead({ fixtures, members, username, results, onClo
       myPoints: matchups.reduce((sum, m) => sum + m.myPoints, 0),
       theirPoints: matchups.reduce((sum, m) => sum + m.theirPoints, 0),
     };
-    
+
     return { matchups, totals, myName, theirName };
   }, [targetUser, fixtures, members, username, results]);
 
@@ -99,8 +99,11 @@ export default function HeadToHead({ fixtures, members, username, results, onClo
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
           <h3 style={{ color: "#fff", fontSize: "1rem" }}>⚔️ Head-to-Head</h3>
           <button onClick={onClose} style={{
-            background: "none", border: "none", color: "#555",
-            fontSize: "1.2rem", cursor: "pointer",
+            background: "none",
+            border: "none",
+            color: "#555",
+            fontSize: "1.2rem",
+            cursor: "pointer",
           }}>✕</button>
         </div>
 
@@ -160,12 +163,12 @@ export default function HeadToHead({ fixtures, members, username, results, onClo
             <div style={{ maxHeight: 350, overflow: "auto" }}>
               {comparison.matchups.map((m, i) => {
                 const bg = m.result === "win" ? "rgba(34,197,94,0.08)" :
-                           m.result === "loss" ? "rgba(239,68,68,0.08)" :
-                           m.result === "draw" ? "rgba(255,215,0,0.08)" : "transparent";
+                  m.result === "loss" ? "rgba(239,68,68,0.08)" :
+                  m.result === "draw" ? "rgba(255,215,0,0.08)" : "transparent";
                 const border = m.result === "win" ? GREEN :
-                               m.result === "loss" ? "#ef4444" :
-                               m.result === "draw" ? "#FFD700" : "rgba(255,255,255,0.05)";
-                
+                  m.result === "loss" ? "#ef4444" :
+                  m.result === "draw" ? "#FFD700" : "rgba(255,255,255,0.05)";
+
                 return (
                   <div key={i} style={{
                     display: "grid",
@@ -179,11 +182,17 @@ export default function HeadToHead({ fixtures, members, username, results, onClo
                   }}>
                     <span style={{ color: "#777", minWidth: 35 }}>GW{m.f.gw}</span>
                     <span style={{ color: "#666" }}>{m.f.homeShort} vs {m.f.awayShort}</span>
-                    <span style={{ color: m.myCorrect ? GREEN : "#444", fontWeight: m.myCorrect ? "bold" : "normal" }}>
+                    <span style={{
+                      color: m.myCorrect ? GREEN : "#444",
+                      fontWeight: m.myCorrect ? "bold" : "normal"
+                    }}>
                       {m.myPick || "—"}
                     </span>
                     <span style={{ color: "#333" }}>vs</span>
-                    <span style={{ color: m.theirCorrect ? GREEN : "#444", fontWeight: m.theirCorrect ? "bold" : "normal" }}>
+                    <span style={{
+                      color: m.theirCorrect ? GREEN : "#444",
+                      fontWeight: m.theirCorrect ? "bold" : "normal"
+                    }}>
                       {m.theirPick || "—"}
                     </span>
                     {m.isFT && m.actual && (
