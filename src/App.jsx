@@ -1,7 +1,7 @@
 // src/App.jsx
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { createLeague, joinLeague, getMember, leagueExists, savePicks, subscribeToLeague } from "./firebase";
-import { buildResults, calcMemberScore, seasonStatus } from "./utils/scoring";
+import { buildResults, calcMemberScore, seasonStatus, getGWDeadline } from "./utils/scoring";
 import LeagueEntry  from "./components/LeagueEntry";
 import FixturesTab  from "./components/FixturesTab";
 import PicksTab     from "./components/PicksTab";
@@ -14,6 +14,25 @@ const CACHE = "epl_fixtures_v6";
 const GREEN  = "#00ff85";
 const PURPLE = "#37003c";
 
+// Push notification helper
+function requestNotificationPermission() {
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+}
+
+function sendNotification(title, body) {
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "granted") {
+    new Notification(title, { 
+      body, 
+      icon: "/logo.svg",
+      tag: "epl-pickem",
+    });
+  }
+}
+
 export default function App() {
   const [view,       setView]       = useState("entry");
   const [activeTab,  setActiveTab]  = useState("fixtures");
@@ -21,13 +40,14 @@ export default function App() {
   const [username,   setUsername]   = useState("");
   const [teamName,   setTeamName]   = useState("");
   const [picks,      setPicks]      = useState({});
-  const [banker,     setBanker]     = useState({}); // { gw: fixtureId }
+  const [banker,     setBanker]     = useState({});
   const [members,    setMembers]    = useState({});
   const [fixtures,   setFixtures]   = useState([]);
   const [loadingFix, setLoadingFix] = useState(true);
   const [espnEvents, setEspnEvents] = useState([]);
   const [authError,  setAuthError]  = useState("");
   const [authBusy,   setAuthBusy]   = useState(false);
+  const [notifiedGW, setNotifiedGW] = useState(null);
 
   /* ── Restore session ── */
   useEffect(() => {
@@ -41,6 +61,46 @@ export default function App() {
       }
     } catch {}
   }, []);
+
+  /* ── Request notification permission ── */
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
+
+  /* ── Push notification reminder ── */
+  useEffect(() => {
+    if (view !== "app" || fixtures.length === 0) return;
+
+    // Check for upcoming GW deadlines
+    const allGws = [...new Set(fixtures.map(f => f.gw).filter(g => g != null))].sort((a,b) => a-b);
+    const currentGw = allGws.find(g => {
+      const gf = fixtures.filter(f => f.gw === g);
+      return gf.some(f => !results[f.id]?.completed);
+    }) || allGws[0];
+
+    if (!currentGw || notifiedGW === currentGw) return;
+
+    const deadline = getGWDeadline(fixtures, currentGw);
+    if (!deadline) return;
+
+    const now = new Date();
+    const diff = deadline - now;
+    
+    // Notify 1 hour before deadline
+    if (diff > 0 && diff < 3600000 && diff > 300000) { // Between 1hr and 5min
+      const picksCount = Object.keys(picks).length;
+      const gwFixtures = fixtures.filter(f => f.gw === currentGw);
+      const madePicks = gwFixtures.filter(f => picks[f.id]).length;
+      
+      if (madePicks < gwFixtures.length) {
+        sendNotification(
+          `⏰ GW${currentGw} kicks off in under 1 hour!`,
+          `You've made ${madePicks}/${gwFixtures.length} picks. Don't miss out!`
+        );
+        setNotifiedGW(currentGw);
+      }
+    }
+  }, [fixtures, results, picks, view, notifiedGW]);
 
   /* ── Load EPL fixtures (cached 24 h) ── */
   useEffect(() => {
@@ -144,9 +204,9 @@ export default function App() {
     const current = banker[gw];
     const updated = { ...banker };
     if (current === matchId) {
-      delete updated[gw]; // Unset banker
+      delete updated[gw];
     } else {
-      updated[gw] = matchId; // Set this match as banker
+      updated[gw] = matchId;
     }
     setBanker(updated);
     saveSession(leagueCode,username,teamName,picks,updated);

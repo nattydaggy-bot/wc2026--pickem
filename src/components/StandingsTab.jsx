@@ -2,6 +2,7 @@
 import { useState, useMemo } from "react";
 import { calcMemberScoreWithBanker } from "../utils/scoring";
 import HeadToHead from "./HeadToHead";
+import GWSummary from "./GWSummary";
 
 const FONT = "'Times New Roman', Times, serif";
 const PURPLE = "#7c3aed";
@@ -26,6 +27,7 @@ export default function StandingsTab({ fixtures, members, username, results, sta
   const [copied,    setCopied]    = useState(false);
   const [refreshing,setRefreshing]= useState(false);
   const [h2hTarget, setH2hTarget] = useState(null);
+  const [showSummary, setShowSummary] = useState(false);
 
   const totalGws = useMemo(() => Math.max(0,...fixtures.map(f=>f.gw||0)), [fixtures]);
 
@@ -44,12 +46,32 @@ export default function StandingsTab({ fixtures, members, username, results, sta
   const me = rows.find(r=>r.isMe);
   const stColor = status?.label==="Live"?"#22c55e":status?.label==="In Progress"?"#60a5fa":"#555";
 
+  // WhatsApp share function
+  const shareToWhatsApp = () => {
+    const message = encodeURIComponent(
+      `🏆 EPL Pick'em 2026/27\n\n` +
+      `Join my league: ${leagueCode}\n` +
+      `Predict every match and compete with friends!\n\n` +
+      `🔗 ${window.location.origin}`
+    );
+    window.open(`https://wa.me/?text=${message}`, '_blank');
+  };
+
   async function doRefresh() { setRefreshing(true); try { await onRefresh?.(); } finally { setTimeout(()=>setRefreshing(false),500); } }
   function doCopy() { navigator.clipboard?.writeText(leagueCode); setCopied(true); setTimeout(()=>setCopied(false),1500); }
+
+  // Check if current GW is complete (all matches finished)
+  const currentGWComplete = useMemo(() => {
+    const activeGw = Math.max(...fixtures.map(f => f.gw || 0));
+    const gwFixtures = fixtures.filter(f => f.gw === activeGw);
+    if (gwFixtures.length === 0) return false;
+    return gwFixtures.every(f => results[f.id]?.completed);
+  }, [fixtures, results]);
 
   return (
     <div style={{ padding:"0.75rem", fontFamily:FONT }}>
 
+      {/* Invite Code with WhatsApp Share */}
       <div style={{ background:"rgba(124,58,237,0.06)", border:`1px solid ${PURPLE}33`,
         borderRadius:10, padding:"0.85rem", textAlign:"center", marginBottom:"0.75rem" }}>
         <div style={{ fontSize:"0.6rem", letterSpacing:"2px", color:PURPLE, fontWeight:"bold", marginBottom:6 }}>
@@ -58,12 +80,37 @@ export default function StandingsTab({ fixtures, members, username, results, sta
         <div style={{ fontSize:"1.6rem", fontWeight:900, letterSpacing:5, color:"#60a5fa", marginBottom:8 }}>
           {leagueCode}
         </div>
-        <button onClick={doCopy} style={{ padding:"0.3rem 0.85rem", borderRadius:7,
-          border:"1px solid rgba(255,255,255,0.12)", background:"rgba(255,255,255,0.04)",
-          color:"#999", fontSize:"0.7rem", cursor:"pointer", fontFamily:FONT }}>
-          {copied ? "Copied!" : "Copy code"}
-        </button>
+        <div style={{ display:"flex", gap:6, justifyContent:"center", flexWrap:"wrap" }}>
+          <button onClick={doCopy} style={{ padding:"0.3rem 0.85rem", borderRadius:7,
+            border:"1px solid rgba(255,255,255,0.12)", background:"rgba(255,255,255,0.04)",
+            color:"#999", fontSize:"0.7rem", cursor:"pointer", fontFamily:FONT }}>
+            {copied ? "✅ Copied!" : "📋 Copy code"}
+          </button>
+          <button onClick={shareToWhatsApp} style={{ padding:"0.3rem 0.85rem", borderRadius:7,
+            border:"1px solid #25D366", background:"rgba(37,211,102,0.1)",
+            color:"#25D366", fontSize:"0.7rem", fontWeight:"bold", cursor:"pointer", fontFamily:FONT }}>
+            💬 WhatsApp
+          </button>
+          {currentGWComplete && (
+            <button onClick={() => setShowSummary(true)} style={{ padding:"0.3rem 0.85rem", borderRadius:7,
+              border:"1px solid #FFD700", background:"rgba(255,215,0,0.1)",
+              color:"#FFD700", fontSize:"0.7rem", fontWeight:"bold", cursor:"pointer", fontFamily:FONT }}>
+              📊 GW Summary
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* GW Summary Modal */}
+      {showSummary && (
+        <GWSummary 
+          fixtures={fixtures}
+          members={members}
+          results={results}
+          banker={banker}
+          onClose={() => setShowSummary(false)}
+        />
+      )}
 
       <div style={{ display:"flex", gap:6, marginBottom:"0.85rem" }}>
         <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:5,
