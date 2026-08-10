@@ -8,19 +8,19 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          firebase: ['firebase/app', 'firebase/firestore'],
-        },
-      },
-    },
-  },
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:5173',
-        changeOrigin: true,
-      },
-    },
-  },
+        // manualChunks must be a function, not an object
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'vendor-react';
+            }
+            if (id.includes('firebase')) {
+              return 'vendor-firebase';
+            }
+            return 'vendor';
+          }
+        }
+      }
+    }
+  }
 })

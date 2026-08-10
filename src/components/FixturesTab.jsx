@@ -1,7 +1,6 @@
 // src/components/FixturesTab.jsx
 import { useState, useMemo, useEffect } from "react";
 import { matchHasStarted, calculateTeamForm, getLeaguePosition, getGWDeadline } from "../utils/scoring";
-
 const FONT = "'Times New Roman', Times, serif";
 const GREEN = "#00ff85";
 
