@@ -1,4 +1,3 @@
-// src/components/ProfileStats.jsx
 import { useMemo } from "react";
 
 const FONT = "'Times New Roman', Times, serif";
@@ -7,13 +6,8 @@ const GREEN = "#00ff85";
 
 export default function ProfileStats({ fixtures, picks, results, username, teamName }) {
   const stats = useMemo(() => {
-    let correct = 0;
-    let total = 0;
-    let streak = 0;
-    let bestStreak = 0;
-
+    let correct = 0, total = 0, streak = 0, bestStreak = 0;
     const sortedFixtures = [...fixtures].sort((a, b) => a.date.localeCompare(b.date));
-
     sortedFixtures.forEach(f => {
       const r = results[f.id];
       const p = picks[f.id];
@@ -23,12 +17,9 @@ export default function ProfileStats({ fixtures, picks, results, username, teamN
           correct++;
           streak++;
           if (streak > bestStreak) bestStreak = streak;
-        } else {
-          streak = 0;
-        }
+        } else streak = 0;
       }
     });
-
     const accuracy = total > 0 ? (correct / total) * 100 : 0;
     return { accuracy, correct, total, currentStreak: streak, bestStreak };
   }, [fixtures, picks, results]);

@@ -1,0 +1,16 @@
+{
+  "name": "EPL Pick'em 2026/27",
+  "short_name": "EPL Pick'em",
+  "description": "Predict Premier League matches with friends",
+  "theme_color": "#37003c",
+  "background_color": "#0f0014",
+  "display": "standalone",
+  "icons": [
+    {
+      "src": "logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,7 +1,7 @@
-// src/App.jsx
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { createLeague, joinLeague, getMember, leagueExists, savePicks, subscribeToLeague } from "./firebase";
 import { buildResults, seasonStatus } from "./utils/scoring";
+import { requestNotificationPermission, sendNotification, checkDeadlineReminder } from "./utils/notification";
 import LeagueEntry from "./components/LeagueEntry";
 import FixturesTab from "./components/FixturesTab";
 import PicksTab from "./components/PicksTab";
@@ -28,6 +28,7 @@ export default function App() {
   const [espnEvents, setEspnEvents] = useState([]);
   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
+  const [notifiedGW, setNotifiedGW] = useState(null);
 
   useEffect(() => {
     try {
@@ -42,6 +43,22 @@ export default function App() {
       }
     } catch {}
   }, []);
+
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
+
+  useEffect(() => {
+    if (view !== "app" || fixtures.length === 0 || !results) return;
+    const reminder = checkDeadlineReminder(fixtures, picks, results);
+    if (reminder.shouldNotify && reminder.gw !== notifiedGW) {
+      sendNotification(
+        `⏰ GW${reminder.gw} kicks off in under 1 hour!`,
+        `You've made ${reminder.madePicks}/${reminder.totalPicks} picks. Don't miss out!`
+      );
+      setNotifiedGW(reminder.gw);
+    }
+  }, [fixtures, results, picks, view, notifiedGW]);
 
   useEffect(() => {
     async function load() {
@@ -63,9 +80,7 @@ export default function App() {
       } catch (error) {
         console.warn("Fixture load failed:", error);
         const raw = localStorage.getItem(CACHE);
-        if (raw) {
-          try { setFixtures(JSON.parse(raw)); } catch {}
-        }
+        if (raw) try { setFixtures(JSON.parse(raw)); } catch {}
       } finally {
         setLoadingFix(false);
       }
@@ -172,13 +187,9 @@ export default function App() {
   }
 
   async function handleToggleBanker(gw, matchId) {
-    const current = banker[gw];
     const updated = { ...banker };
-    if (current === matchId) {
-      delete updated[gw];
-    } else {
-      updated[gw] = matchId;
-    }
+    if (updated[gw] === matchId) delete updated[gw];
+    else updated[gw] = matchId;
     setBanker(updated);
     saveSession(leagueCode, username, teamName, picks, updated);
     await savePicks(leagueCode, username, picks, teamName, updated);
@@ -214,7 +225,6 @@ export default function App() {
     { id: "picks", label: "All Picks", icon: "👥" },
     { id: "standings", label: "Standings", icon: "🏆" },
   ];
-
   const stColor = status?.label === "Live" ? GREEN : status?.label === "In Progress" ? "#d4b0ff" : "rgba(255,255,255,0.3)";
 
   return (

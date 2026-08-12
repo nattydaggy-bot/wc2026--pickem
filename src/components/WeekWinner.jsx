@@ -1,4 +1,3 @@
-// src/components/WeekWinner.jsx
 import { useState, useMemo } from "react";
 import { calcMemberScoreWithBanker } from "../utils/scoring";
 
@@ -7,7 +6,6 @@ const GOLD = "#FFD700";
 
 export default function WeekWinner({ fixtures, members, results, banker = {} }) {
   const [currentGw, setCurrentGw] = useState(null);
-
   const activeGw = useMemo(() => {
     const now = new Date();
     let latest = fixtures[fixtures.length - 1]?.gw || 1;
@@ -37,7 +35,6 @@ export default function WeekWinner({ fixtures, members, results, banker = {} }) 
 
   const sorted = Object.entries(gwScores).sort((a, b) => b[1].score - a[1].score).filter(([_, data]) => data.total > 0);
   const winner = sorted.length > 0 ? sorted[0] : null;
-
   const allGws = useMemo(() => {
     const gws = new Set();
     fixtures.forEach(f => { if (f.gw) gws.add(f.gw); });
@@ -57,9 +54,7 @@ export default function WeekWinner({ fixtures, members, results, banker = {} }) 
                 <span style={{ fontSize: "0.7rem", color: GOLD }}>{winner[1].score} pts</span>
                 <span style={{ fontSize: "0.5rem", color: "#555" }}>({winner[1].correct}/{winner[1].total})</span>
               </div>
-            ) : (
-              <span style={{ color: "#444", fontSize: "0.7rem" }}>No picks yet</span>
-            )}
+            ) : <span style={{ color: "#444", fontSize: "0.7rem" }}>No picks yet</span>}
           </div>
         </div>
         <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
@@ -68,9 +63,7 @@ export default function WeekWinner({ fixtures, members, results, banker = {} }) 
           </select>
           <div style={{ display: "flex", gap: 2 }}>
             {sorted.slice(0, 3).map(([uname, data], i) => (
-              <div key={uname} style={{ fontSize: "0.5rem", color: i === 0 ? GOLD : "#555", background: "rgba(255,255,255,0.04)", padding: "1px 5px", borderRadius: 6 }}>
-                {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"} {data.teamName}
-              </div>
+              <div key={uname} style={{ fontSize: "0.5rem", color: i === 0 ? GOLD : "#555", background: "rgba(255,255,255,0.04)", padding: "1px 5px", borderRadius: 6 }}>{i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"} {data.teamName}</div>
             ))}
           </div>
         </div>

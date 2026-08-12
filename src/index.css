@@ -1,11 +1,10 @@
-/* Official Premier League theme: #37003c purple + #00ff85 green */
 *,*::before,*::after{
   box-sizing:border-box;margin:0;padding:0;
   font-family:'Times New Roman',Times,serif!important;
 }
 html,body,#root{
   min-height:100vh;
-  background:#0f0014;   /* deep PL purple-black */
+  background:#0f0014;
   color:#fff;
 }
 ::-webkit-scrollbar{width:4px;height:4px;}
