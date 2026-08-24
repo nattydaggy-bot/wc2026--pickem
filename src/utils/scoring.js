@@ -1,4 +1,4 @@
-// src/utils/scoring.js — EPL Pick'em scoring engine (FIXED)
+// src/utils/scoring.js — EPL Pick'em scoring engine (FINAL FIXED)
 
 export const POINTS_PER_CORRECT = 1;
 export const TOTAL_GAMEWEEKS = 38;
@@ -176,18 +176,19 @@ export function seasonStatus(results = {}) {
   return { label: "Season Done", completed, live };
 }
 
-// --- FIXED: Team Form Guide (only last 5 completed matches) ---
+// --- FIXED: Team Form Guide (unique matches only) ---
 export function calculateTeamForm(teamName, fixtures, results) {
   const form = [];
   const teamCanon = canonicalTeam(teamName);
+  const seen = new Set();
 
-  // Get all completed matches involving this team
+  // Get all completed matches involving this team, deduplicated by id
   const matches = fixtures.filter(f => {
     const homeCanon = canonicalTeam(f.home);
     const awayCanon = canonicalTeam(f.away);
     const isInvolved = (homeCanon === teamCanon || awayCanon === teamCanon);
     const isCompleted = results[f.id]?.completed === true;
-    return isInvolved && isCompleted;
+    return isInvolved && isCompleted && !seen.has(f.id) && seen.add(f.id);
   });
 
   // Sort by date (most recent first)
@@ -214,15 +215,15 @@ export function calculateTeamForm(teamName, fixtures, results) {
     form.push(result);
   });
 
-  return form; // Returns up to 5 results
+  return form;
 }
 
-// --- FIXED: League Position (only teams that have played) ---
+// --- FIXED: League Position (points, goal difference, goals scored) ---
 export function getLeaguePosition(teamName, fixtures, results) {
   const teamCanon = canonicalTeam(teamName);
   const teams = {};
 
-  // First, collect all teams that have played at least one completed match
+  // First, collect teams that have played at least one completed match
   fixtures.forEach(f => {
     const r = results[f.id];
     if (!r?.completed) return;
@@ -231,17 +232,17 @@ export function getLeaguePosition(teamName, fixtures, results) {
     const away = canonicalTeam(f.away);
     
     if (!teams[home]) {
-      teams[home] = { name: home, played: 0, won: 0, drawn: 0, lost: 0, pts: 0 };
+      teams[home] = { name: home, played: 0, won: 0, drawn: 0, lost: 0, pts: 0, gf: 0, ga: 0, gd: 0 };
     }
     if (!teams[away]) {
-      teams[away] = { name: away, played: 0, won: 0, drawn: 0, lost: 0, pts: 0 };
+      teams[away] = { name: away, played: 0, won: 0, drawn: 0, lost: 0, pts: 0, gf: 0, ga: 0, gd: 0 };
     }
   });
 
   // If the team hasn't played any matches, return null
   if (!teams[teamCanon]) return null;
 
-  // Calculate points for teams that have played
+  // Calculate stats
   fixtures.forEach(f => {
     const r = results[f.id];
     if (!r?.completed) return;
@@ -254,6 +255,10 @@ export function getLeaguePosition(teamName, fixtures, results) {
     if (homeScore !== null && awayScore !== null && teams[home] && teams[away]) {
       teams[home].played++;
       teams[away].played++;
+      teams[home].gf += homeScore;
+      teams[home].ga += awayScore;
+      teams[away].gf += awayScore;
+      teams[away].ga += homeScore;
 
       if (homeScore > awayScore) {
         teams[home].won++;
@@ -272,11 +277,15 @@ export function getLeaguePosition(teamName, fixtures, results) {
     }
   });
 
-  // Sort by points (and games played as tiebreaker)
+  // Calculate goal difference
+  Object.values(teams).forEach(t => { t.gd = t.gf - t.ga; });
+
+  // Sort: points > goal difference > goals scored > team name (alphabetical)
   const sorted = Object.values(teams).sort((a, b) => {
     if (b.pts !== a.pts) return b.pts - a.pts;
-    // If points are equal, fewer games played = higher position (better)
-    return a.played - b.played;
+    if (b.gd !== a.gd) return b.gd - a.gd;
+    if (b.gf !== a.gf) return b.gf - a.gf;
+    return a.name.localeCompare(b.name);
   });
 
   const pos = sorted.findIndex(t => t.name === teamCanon) + 1;
